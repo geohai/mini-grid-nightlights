@@ -130,3 +130,6 @@ dmypy.json
 user_config.yml
 odyssey_secrets.yml
 lab_data_dict.yml
+
+# Mac files
+.DS_Store
