@@ -11,20 +11,20 @@ import sys
 
 # Constants: typical file names and directory paths
 
-def get_dropbox_root(config_path: str = "user_config.yml") -> str:
-    """Gets the Dropbox root folder in an OS- and user-independent way
-    Args:
-        config_path (str, optional): A full or relative path to the user_config
-        containing (among other things) the Dropbox folder location on the local
-        system. Defaults to "user_config.yml".
-    Returns:
-        str: The full path to the Dropbox root folder, formatted correctly for OS
-    """
-    if not os.path.isabs(config_path):
-        config_path = os.path.join(os.path.dirname(__file__), config_path)
-    with open(config_path, "r") as stream:
-        data = yaml.safe_load(stream)
-    return data["dropbox_root"]
+# def get_dropbox_root(config_path: str = "user_config.yml") -> str:
+#     """Gets the Dropbox root folder in an OS- and user-independent way
+#     Args:
+#         config_path (str, optional): A full or relative path to the user_config
+#         containing (among other things) the Dropbox folder location on the local
+#         system. Defaults to "user_config.yml".
+#     Returns:
+#         str: The full path to the Dropbox root folder, formatted correctly for OS
+#     """
+#     if not os.path.isabs(config_path):
+#         config_path = os.path.join(os.path.dirname(__file__), config_path)
+#     with open(config_path, "r") as stream:
+#         data = yaml.safe_load(stream)
+#     return data["dropbox_root"]
     
 def get_latest_path(path, date_length: int=6):
     """Function to get the latest path
@@ -40,10 +40,10 @@ def get_latest_path(path, date_length: int=6):
     latest_path = os.path.join(os.path.dirname(path), latest_file)
     return latest_path
 
-dropbox_root = get_dropbox_root()
+# dropbox_root = get_dropbox_root()
 
 project_root = os.path.join(
-    dropbox_root,
+    # dropbox_root,
     "CB Data Analytics",
     "1 Projects",
     "12. KPLC Pilot Study",
