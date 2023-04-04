@@ -133,14 +133,22 @@ def create_connection(type: str = "rest", metadata: Optional[dict] = None) -> An
         connection_credentials.update(metadata["secrets"])
         return pyodbc.connect(**connection_credentials)
     elif type == "rest":
-        connection_credentials = [
-            x["kwargs"] for x in metadata["connections"] if x["type"] == "rest"
-        ][0]
-        # Slightly different secrets syntax compared to ODBC, but same underlying creds
-        connection_credentials.update(
-            {"http_auth": (metadata["secrets"]["uid"], metadata["secrets"]["pwd"])}
-        )
-        return elasticsearch.Elasticsearch(**connection_credentials)
+        secrets_file_path = 'odyssey_secrets.yml'
+        with open(secrets_file_path, 'r') as file:
+            secrets = yaml.safe_load(file)
+        id = secrets['api-id']
+        key = secrets['api-key']
+
+        host = "https://f05fc8c52e6b4a99b838818f59bbda80.us-east-1.aws.found.io:9243"
+        return elasticsearch.Elasticsearch([host], api_key=(id,key),request_timeout=60, max_retries=2, retry_on_timeout=True)
+        # connection_credentials = [
+        #     x["kwargs"] for x in metadata["connections"] if x["type"] == "rest"
+        # ][0]
+        # # Slightly different secrets syntax compared to ODBC, but same underlying creds
+        # connection_credentials.update(
+        #     {"http_auth": (metadata["secrets"]["uid"], metadata["secrets"]["pwd"])}
+        # )
+        # return elasticsearch.Elasticsearch(**connection_credentials)
     else:
         raise ValueError(f"Connection type {type} not currently supported.")
 
@@ -265,7 +273,7 @@ def sql_to_df(
         cnxn = create_connection()
 
     cnxn_str = str(type(cnxn))
-    if cnxn_str == "<class 'elasticsearch.client.Elasticsearch'>":
+    if cnxn_str == "<class 'elasticsearch.Elasticsearch'>":
         keep_going = True
         dfs = []
         iter_num = 1
