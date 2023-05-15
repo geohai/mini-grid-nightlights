@@ -133,3 +133,6 @@ lab_data_dict.yml
 
 # Mac files
 .DS_Store
+
+*.csv
+data/
