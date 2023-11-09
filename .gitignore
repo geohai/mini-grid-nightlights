@@ -129,6 +129,7 @@ dmypy.json
 .pyre/
 user_config.yml
 odyssey_secrets.yml
+odyssey_secrets.charles.yml
 lab_data_dict.yml
 
 # Mac files
