@@ -1,4 +1,4 @@
-name: CB_Lab_Mapping_Economic_Migration-env
+name: cbil
 channels:
   - conda-forge
   - defaults
