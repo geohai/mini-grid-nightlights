@@ -1,0 +1,145 @@
+# Callaway & Sant'Anna Difference in Difference Analysis for a Staggered Treatment
+
+This notebook uses the Callaway & Sant'Anna (2020) Difference in Difference analysis for a staggered treatment. 
+The original paper can be found [here](https://www.sciencedirect.com/science/article/pii/S0304407620300253).
+An online tutorial can be found [here](https://tilburgsciencehub.com/topics/analyze/causal-inference/did/staggered-did/).
+
+## Load Packages
+```{r}
+library(tidyverse)
+library(did)
+library(lubridate)
+```
+
+## Read in Data
+```{r}
+# read in data
+df <- read_csv("./data/nightlight_values_v2.csv")
+
+# check datatypes of each column
+glimpse(df)
+```
+Rows: 10,998
+Columns: 5
+$ site_name         <chr> "Village1", "Village2", "Village3", "Village4", "Pa…
+$ site_type         <chr> "Control", "Control", "Control", "Control", "Control…
+$ date_commissioned <date> 2030-01-01, 2030-01-01, 2030-01-01, 2030-01-01, 203…
+$ image_date        <date> 2014-01-01, 2014-01-01, 2014-01-01, 2014-01-01, 201…
+$ image_value       <dbl> 0.0081370871, 0.0319521341, 0.0101637386, 0.02598547…
+
+## Data Requirements
+- There must be a unit-specific identifier variable that does not vary over time. Here that is site_name.
+- There must be a time variable. Here that is image_date.
+- There must be a group variable, which is usually the period when an individual first becomes treated. For units that are never treated, this variable should be set to 0! Here, we'll group by the date_commissioned variable.
+- The variables must be of numeric class.
+Note: this analysis can be run without control sites! Worth re-running on the CLUB-ER dataset. 
+
+## Create a Treatment Group Variable
+```{r}
+# convert id variable to factor to integer
+df$site_id <- as.integer(as.factor(df$site_name))
+
+# pull out the earliest date
+start_date <- min(df$image_date)
+end_date <- max(df$image_date)
+start_year <- year(start_date)
+end_year <- year(end_date)
+start_month <- month(start_date)
+end_month <- month(end_date)
+
+# set the date commissioned for all Control sites to the earliest date
+df$date_commissioned[df$site_type == "Control"] <- start_date
+
+# try the years
+df$year_commissioned <- year(df$date_commissioned)
+df$year_image <- year(df$image_date)
+
+# extract months
+df$month_commissioned <- month(df$date_commissioned)
+df$month_image <- month(df$image_date)
+
+# convert dates into months since first image
+df$group <- (df$year_commissioned - start_year) * 12 + (df$month_commissioned - start_month)
+df$time_period <- (df$year_image - start_year) * 12 + (df$month_image - start_month)
+
+# export df to csv
+View(df)
+write_csv(df, "./data/nightlight_values_for_csdind.csv")
+```
+
+## Run the Analysis
+```{r}
+# read in the data
+df <- read_csv("./data/nightlight_values_for_csdind.csv")
+
+# run the model
+did_control <- att_gt(
+    yname = "image_value", # outcome variable
+    tname = "time_period", # time variable
+    idname = "site_id", # id variable
+    gname = "group", # first treatment period variable
+    data = df, # data
+    control_group = "nevertreated", # set the comparison group as either "never treated" or "not yet treated"
+    # allow_unbalanced_panel = TRUE # indicate whether or not the function should balance with respect to time and id
+)
+
+did_notyettreated <- att_gt(
+    yname = "image_value", # outcome variable
+    tname = "time_period", # time variable
+    idname = "site_id", # id variable
+    gname = "group", # first treatment period variable
+    data = df, # data
+    control_group = "notyettreated", # set the comparison group as either "never treated" or "not yet treated"
+    # allow_unbalanced_panel = TRUE # indicate whether or not the function should balance with respect to time and id
+)
+
+# aggregate the results
+did_control_agg <- aggte(
+    did_control,
+    type = "dynamic", 
+    na.rm = TRUE
+)
+
+did_notyettreated_agg <- aggte(
+    did_notyettreated,
+    type = "dynamic", 
+    na.rm = TRUE
+)
+
+# view the results
+summary(did_control_agg)
+summary(did_notyettreated_agg)
+
+# plot group-time ATTs
+did_control_agg_plt <- ggdid(did_control_agg) +
+    labs(title = "Group-Time ATTs for Control Group", x = "Time Period", y = "ATT") +
+    theme_bw()
+
+did_notyettreated_agg_plt <- ggdid(did_notyettreated_agg) +
+    labs(title = "Group-Time ATTs for Not Yet Treated Group", x = "Time Period", y = "ATT") +
+    theme_bw()
+
+print(did_control_agg_plt)
+print(did_notyettreated_agg_plt)
+```
+Warnings while running model:
+1: In pre_process_did(yname = yname, tname = tname, idname = idname,  :
+  Dropped 7 observations while converting to balanced panel.
+2: In pre_process_did(yname = yname, tname = tname, idname = idname,  :
+  Be aware that there are some small groups in your dataset.
+  Check groups: 66,68,70,71,72,76,81,85,87,88,89,90,97,99,100,101,103.
+3: In att_gt(yname = "image_value", tname = "time_period", idname = "site_id",  :
+  Not returning pre-test Wald statistic due to singular covariance matrix
+
+## Results
+Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. <https://doi.org/10.1016/j.jeconom.2020.12.001>, <https://arxiv.org/abs/1803.09015> 
+
+### Control Group
+Overall summary of ATT's based on event-study/dynamic aggregation:  
+     ATT    Std. Error     [ 95%  Conf. Int.] 
+ -0.0781        0.0545    -0.1849      0.0288 
+
+### Not Yet Treated Group
+Overall summary of ATT's based on event-study/dynamic aggregation:  
+     ATT    Std. Error     [ 95%  Conf. Int.] 
+ -0.0773        0.0485    -0.1723      0.0178 
