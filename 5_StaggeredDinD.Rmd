@@ -11,15 +11,12 @@ library(did)
 library(lubridate)
 ```
 
-## Read in Data
+## Read in Data & View Summary Statistics
 ```{r}
 # read in data
 df <- read_csv("./data/nightlight_values_v2.csv")
 View(df)
-```
 
-## Summary Statistics of Data
-```{r}
 # check datatypes of each column
 glimpse(df)
 
@@ -48,6 +45,24 @@ ggplot(df, aes(x = image_value)) +
     geom_histogram(bins = 100) +
     labs(title = "Histogram of Image Values", x = "Image Value", y = "Count") +
     theme_bw()
+
+# examine image_values for each site over time to see if there are any outliers
+df %>%
+    ggplot(aes(x = image_date, y = image_value, color = site_name)) +
+    geom_line() +
+    labs(title = "Image Values Over Time", x = "Image Date", y = "Image Value") +
+    theme_bw()
+
+# plot the mean brightness by site with x labels sideways
+df %>%
+    group_by(site_name) %>%
+    summarize(mean_image_value = mean(image_value)) %>%
+    ggplot(aes(x = site_name, y = mean_image_value)) +
+    geom_col() +
+    labs(title = "Mean Image Value by Site", x = "Site Name", y = "Mean Image Value") +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
 ```
 Rows: 10,998
 Columns: 5
@@ -60,6 +75,60 @@ $ image_value       <dbl> 0.0081370871, 0.0319521341, 0.0101637386, 0.02598547â€
 40 control sites
 47 treatment sites
 
+## Data Cleaning
+```{r}
+# reread in data
+df <- read_csv("./data/nightlight_values_v2.csv")
+
+# remove the site Pepel
+df <- df %>%
+    filter(site_name != "Pepel")
+
+# calculate the mean value per site
+df <- df %>%
+    group_by(site_name) %>%
+    mutate(mean_image_value = mean(image_value)) %>%
+    ungroup()
+
+# calculate the standard deviation of all sites
+sd_all <- sd(df$image_value)
+print(sd_all)
+
+# calculate the max and min value for each site as the mean +/- 3 * sd
+df <- df %>%
+    mutate(min_image_value = mean_image_value - 3 * sd_all,
+           max_image_value = mean_image_value + 3 * sd_all)
+
+# count how many image values are above the max or below the min
+n_outliers <- df %>%
+    filter(image_value > max_image_value | image_value < min_image_value) %>%
+    count()
+print(n_outliers) # 42 outliers out of 10,881 observations
+
+# replace image_value with max if image_value > max and with min if image_value < min
+df <- df %>%
+    mutate(image_value = ifelse(image_value > max_image_value, max_image_value, image_value),
+           image_value = ifelse(image_value < min_image_value, min_image_value, image_value))
+
+# revisualize
+df %>%
+    ggplot(aes(x = image_date, y = image_value, color = site_name)) +
+    geom_line() +
+    labs(title = "Image Values Over Time", x = "Image Date", y = "Image Value") +
+    theme_bw()
+
+# do a histogram of image values
+ggplot(df, aes(x = image_value)) +
+    geom_histogram(bins = 100) +
+    labs(title = "Histogram of Image Values", x = "Image Value", y = "Count") +
+    theme_bw()
+
+# much better!
+
+# export df to csv
+write_csv(df, "./data/nightlight_values_v2_clean.csv")
+```
+
 ## Data Requirements
 - There must be a unit-specific identifier variable that does not vary over time. Here that is site_name.
 - There must be a time variable. Here that is image_date.
@@ -69,6 +138,9 @@ Note: this analysis can be run without control sites! Worth re-running on the CL
 
 ## Create a Treatment Group Variable
 ```{r}
+# read in data
+df <- read_csv("./data/nightlight_values_v2_clean.csv")
+
 # convert id variable to factor to integer
 df$site_id <- as.integer(as.factor(df$site_name))
 
@@ -146,14 +218,18 @@ summary(did_notyettreated_agg)
 # plot group-time ATTs
 did_control_agg_plt <- ggdid(did_control_agg) +
     labs(title = "Group-Time ATTs for Control Group", x = "Time Period", y = "ATT") +
-    theme_bw()
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 
 did_notyettreated_agg_plt <- ggdid(did_notyettreated_agg) +
     labs(title = "Group-Time ATTs for Not Yet Treated Group", x = "Time Period", y = "ATT") +
-    theme_bw()
+    theme_bw() + 
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 
 print(did_control_agg_plt)
 print(did_notyettreated_agg_plt)
+
+print('hello world')
 ```
 Warnings while running model:
 1: In pre_process_did(yname = yname, tname = tname, idname = idname,  :
