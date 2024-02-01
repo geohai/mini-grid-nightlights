@@ -1,0 +1,254 @@
+# Callaway & Sant'Anna Difference in Difference Analysis for a Staggered Treatment
+
+This notebook uses the Callaway & Sant'Anna (2020) Difference in Difference analysis for a staggered treatment. 
+The original paper can be found [here](https://www.sciencedirect.com/science/article/pii/S0304407620300253).
+An online tutorial can be found [here](https://tilburgsciencehub.com/topics/analyze/causal-inference/did/staggered-did/).
+
+## Load Packages
+```{r}
+library(tidyverse)
+library(did)
+library(lubridate)
+```
+
+## Read in Data & View Summary Statistics
+```{r}
+# read in data
+df <- read_csv("./data/nightlight_values_v2.csv")
+View(df)
+
+# check datatypes of each column
+glimpse(df)
+
+# count number of unique control sites
+n_control <- df %>%
+    filter(site_type == "Control") %>%
+    count(site_name) %>% nrow()
+print(n_control)
+
+# count number of unique treatment sites
+n_treatment <- df %>%
+    filter(site_type == "PowerGen" | site_type == "CBIL") %>%
+    count(site_name) %>% nrow()
+print(n_treatment)
+
+# pull out the earliest date
+start_date <- min(df$image_date)
+end_date <- max(df$image_date)
+start_year <- year(start_date)
+end_year <- year(end_date)
+start_month <- month(start_date)
+end_month <- month(end_date)
+
+# plot histogram of image values
+ggplot(df, aes(x = image_value)) +
+    geom_histogram(bins = 100) +
+    labs(title = "Histogram of Image Values", x = "Image Value", y = "Count") +
+    theme_bw()
+
+# examine image_values for each site over time to see if there are any outliers
+df %>%
+    ggplot(aes(x = image_date, y = image_value, color = site_name)) +
+    geom_line() +
+    labs(title = "Image Values Over Time", x = "Image Date", y = "Image Value") +
+    theme_bw()
+
+# plot the mean brightness by site with x labels sideways
+df %>%
+    group_by(site_name) %>%
+    summarize(mean_image_value = mean(image_value)) %>%
+    ggplot(aes(x = site_name, y = mean_image_value)) +
+    geom_col() +
+    labs(title = "Mean Image Value by Site", x = "Site Name", y = "Mean Image Value") +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+```
+Rows: 10,998
+Columns: 5
+$ site_name         <chr> "Village1", "Village2", "Village3", "Village4", "Pa…
+$ site_type         <chr> "Control", "Control", "Control", "Control", "Control…
+$ date_commissioned <date> 2030-01-01, 2030-01-01, 2030-01-01, 2030-01-01, 203…
+$ image_date        <date> 2014-01-01, 2014-01-01, 2014-01-01, 2014-01-01, 201…
+$ image_value       <dbl> 0.0081370871, 0.0319521341, 0.0101637386, 0.02598547…
+
+40 control sites
+47 treatment sites
+
+## Data Cleaning
+```{r}
+# reread in data
+df <- read_csv("./data/nightlight_values_v2.csv")
+
+# remove the site Pepel
+df <- df %>%
+    filter(site_name != "Pepel")
+
+# calculate the mean value per site
+df <- df %>%
+    group_by(site_name) %>%
+    mutate(mean_image_value = mean(image_value)) %>%
+    ungroup()
+
+# calculate the standard deviation of all sites
+sd_all <- sd(df$image_value)
+print(sd_all)
+
+# calculate the max and min value for each site as the mean +/- 3 * sd
+df <- df %>%
+    mutate(min_image_value = mean_image_value - 3 * sd_all,
+           max_image_value = mean_image_value + 3 * sd_all)
+
+# count how many image values are above the max or below the min
+n_outliers <- df %>%
+    filter(image_value > max_image_value | image_value < min_image_value) %>%
+    count()
+print(n_outliers) # 42 outliers out of 10,881 observations
+
+# replace image_value with max if image_value > max and with min if image_value < min
+df <- df %>%
+    mutate(image_value = ifelse(image_value > max_image_value, max_image_value, image_value),
+           image_value = ifelse(image_value < min_image_value, min_image_value, image_value))
+
+# revisualize
+df %>%
+    ggplot(aes(x = image_date, y = image_value, color = site_name)) +
+    geom_line() +
+    labs(title = "Image Values Over Time", x = "Image Date", y = "Image Value") +
+    theme_bw()
+
+# do a histogram of image values
+ggplot(df, aes(x = image_value)) +
+    geom_histogram(bins = 100) +
+    labs(title = "Histogram of Image Values", x = "Image Value", y = "Count") +
+    theme_bw()
+
+# much better!
+
+# export df to csv
+write_csv(df, "./data/nightlight_values_v2_clean.csv")
+```
+
+## Data Requirements
+- There must be a unit-specific identifier variable that does not vary over time. Here that is site_name.
+- There must be a time variable. Here that is image_date.
+- There must be a group variable, which is usually the period when an individual first becomes treated. For units that are never treated, this variable should be set to 0! Here, we'll group by the date_commissioned variable.
+- The variables must be of numeric class.
+Note: this analysis can be run without control sites! Worth re-running on the CLUB-ER dataset. 
+
+## Create a Treatment Group Variable
+```{r}
+# read in data
+df <- read_csv("./data/nightlight_values_v2_clean.csv")
+
+# convert id variable to factor to integer
+df$site_id <- as.integer(as.factor(df$site_name))
+
+# set the date commissioned for all Control sites to the earliest date
+df$date_commissioned[df$site_type == "Control"] <- start_date
+
+# try the years
+df$year_commissioned <- year(df$date_commissioned)
+df$year_image <- year(df$image_date)
+
+# extract months
+df$month_commissioned <- month(df$date_commissioned)
+df$month_image <- month(df$image_date)
+
+# convert dates into months since first image
+df$group <- (df$year_commissioned - start_year) * 12 + (df$month_commissioned - start_month)
+df$time_period <- (df$year_image - start_year) * 12 + (df$month_image - start_month)
+
+# plot histogram of group variable
+# set y max to 120
+ggplot(df, aes(x = group)) +
+    geom_histogram(bins = 100) +
+    xlim(-5, 120) +
+    labs(title = "Histogram of Group Variable", x = "Group", y = "Count") +
+    theme_bw()
+
+# export df to csv
+View(df)
+write_csv(df, "./data/nightlight_values_for_csdind.csv")
+```
+
+## Run the Analysis
+```{r}
+# read in the data
+df <- read_csv("./data/nightlight_values_for_csdind.csv")
+
+# run the model
+did_control <- att_gt(
+    yname = "image_value", # outcome variable
+    tname = "time_period", # time variable
+    idname = "site_id", # id variable
+    gname = "group", # first treatment period variable
+    data = df, # data
+    control_group = "nevertreated", # set the comparison group as either "never treated" or "not yet treated"
+    # allow_unbalanced_panel = TRUE # indicate whether or not the function should balance with respect to time and id
+)
+
+did_notyettreated <- att_gt(
+    yname = "image_value", # outcome variable
+    tname = "time_period", # time variable
+    idname = "site_id", # id variable
+    gname = "group", # first treatment period variable
+    data = df, # data
+    control_group = "notyettreated", # set the comparison group as either "never treated" or "not yet treated"
+    # allow_unbalanced_panel = TRUE # indicate whether or not the function should balance with respect to time and id
+)
+
+# aggregate the results
+did_control_agg <- aggte(
+    did_control,
+    type = "dynamic", 
+    na.rm = TRUE
+)
+
+did_notyettreated_agg <- aggte(
+    did_notyettreated,
+    type = "dynamic", 
+    na.rm = TRUE
+)
+
+# view the results
+summary(did_control_agg)
+summary(did_notyettreated_agg)
+
+# plot group-time ATTs
+did_control_agg_plt <- ggdid(did_control_agg) +
+    labs(title = "Group-Time ATTs for Control Group", x = "Time Period", y = "ATT") +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+did_notyettreated_agg_plt <- ggdid(did_notyettreated_agg) +
+    labs(title = "Group-Time ATTs for Not Yet Treated Group", x = "Time Period", y = "ATT") +
+    theme_bw() + 
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+print(did_control_agg_plt)
+print(did_notyettreated_agg_plt)
+
+print('hello world')
+```
+Warnings while running model:
+1: In pre_process_did(yname = yname, tname = tname, idname = idname,  :
+  Dropped 7 observations while converting to balanced panel.
+2: In pre_process_did(yname = yname, tname = tname, idname = idname,  :
+  Be aware that there are some small groups in your dataset.
+  Check groups: 66,68,70,71,72,76,81,85,87,88,89,90,97,99,100,101,103.
+3: In att_gt(yname = "image_value", tname = "time_period", idname = "site_id",  :
+  Not returning pre-test Wald statistic due to singular covariance matrix
+
+## Results
+Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. <https://doi.org/10.1016/j.jeconom.2020.12.001>, <https://arxiv.org/abs/1803.09015> 
+
+### Control Group
+Overall summary of ATT's based on event-study/dynamic aggregation:  
+     ATT    Std. Error     [ 95%  Conf. Int.] 
+ -0.0781        0.0545    -0.1849      0.0288 
+
+### Not Yet Treated Group
+Overall summary of ATT's based on event-study/dynamic aggregation:  
+     ATT    Std. Error     [ 95%  Conf. Int.] 
+ -0.0773        0.0485    -0.1723      0.0178 
