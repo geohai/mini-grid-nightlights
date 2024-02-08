@@ -113,6 +113,11 @@ print(sd_all) # 0.743965
 n <- nrow(df)
 print(n) # 82485
 
+# calculate the number of unique sites
+n_sites <- df %>%
+    count(site_name) %>% nrow()
+print(n_sites) #688
+
 # calculate the max and min value for each site as the mean +/- 3 * sd
 df <- df %>%
     mutate(min_image_value = mean_image_value - 3 * sd_all,

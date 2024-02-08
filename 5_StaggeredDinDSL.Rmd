@@ -51,7 +51,9 @@ df %>%
     ggplot(aes(x = image_date, y = image_value, color = site_name)) +
     geom_line() +
     labs(title = "Image Values Over Time", x = "Image Date", y = "Image Value") +
-    theme_bw()
+    theme_bw() + 
+        # hide legend
+    theme(legend.position = "none")
 
 # plot the mean brightness by site with x labels sideways
 df %>%
@@ -61,7 +63,9 @@ df %>%
     geom_col() +
     labs(title = "Mean Image Value by Site", x = "Site Name", y = "Mean Image Value") +
     theme_bw() +
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) + 
+    # hide legend
+    theme(legend.position = "none")
 
 ```
 Rows: 10,998
@@ -115,7 +119,11 @@ df %>%
     ggplot(aes(x = image_date, y = image_value, color = site_name)) +
     geom_line() +
     labs(title = "Image Values Over Time", x = "Image Date", y = "Image Value") +
-    theme_bw()
+    theme_bw() + 
+        # hide legend
+    theme(legend.position = "none")
+    
+    
 
 # do a histogram of image values
 ggplot(df, aes(x = image_value)) +
