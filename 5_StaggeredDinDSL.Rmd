@@ -15,7 +15,7 @@ library(lubridate)
 ```{r}
 # read in data
 df <- read_csv("./data/nightlight_values_v2.csv")
-View(df)
+# View(df)
 
 # check datatypes of each column
 glimpse(df)
@@ -176,7 +176,7 @@ ggplot(df, aes(x = group)) +
     theme_bw()
 
 # export df to csv
-View(df)
+# View(df)
 write_csv(df, "./data/nightlight_values_for_csdind.csv")
 ```
 
@@ -186,6 +186,7 @@ write_csv(df, "./data/nightlight_values_for_csdind.csv")
 df <- read_csv("./data/nightlight_values_for_csdind.csv")
 
 # run the model
+# https://bcallaway11.github.io/did/reference/att_gt.html
 did_control <- att_gt(
     yname = "image_value", # outcome variable
     tname = "time_period", # time variable
@@ -193,7 +194,6 @@ did_control <- att_gt(
     gname = "group", # first treatment period variable
     data = df, # data
     control_group = "nevertreated", # set the comparison group as either "never treated" or "not yet treated"
-    # allow_unbalanced_panel = TRUE # indicate whether or not the function should balance with respect to time and id
 )
 
 did_notyettreated <- att_gt(
@@ -203,7 +203,6 @@ did_notyettreated <- att_gt(
     gname = "group", # first treatment period variable
     data = df, # data
     control_group = "notyettreated", # set the comparison group as either "never treated" or "not yet treated"
-    # allow_unbalanced_panel = TRUE # indicate whether or not the function should balance with respect to time and id
 )
 
 # aggregate the results
@@ -260,3 +259,94 @@ Overall summary of ATT's based on event-study/dynamic aggregation:
 Overall summary of ATT's based on event-study/dynamic aggregation:  
      ATT    Std. Error     [ 95%  Conf. Int.] 
  -0.0773        0.0485    -0.1723      0.0178 
+
+## Rerun with years as time periods instead of months
+```{r}
+# read in the data
+df <- read_csv("./data/nightlight_values_for_csdind.csv")
+
+# view data
+glimpse(df)
+
+# take the mean image value for each site for each year
+df <- df %>%
+    group_by(site_id, site_name, year_image, year_commissioned, site_type) %>%
+    summarize(
+        mean_image_value = mean(image_value),
+        median_image_value = median(image_value)
+    )
+
+glimpse(df)
+
+# create group variable
+df$group <- df$year_commissioned - start_year + 1
+
+# put all 'Control' sites into group 0
+df$group[df$site_type == "Control"] <- 0
+
+# add a time period variable which is year_image - start_year
+df$time_period <- df$year_image - start_year + 1
+
+# glimpse the head
+glimpse(df)
+
+# export df to csv
+write_csv(df, "./data/nightlight_values_for_csdind_years.csv")
+```
+
+## Rerun the Analysis
+```{r}
+# read in the data
+df <- read_csv("./data/nightlight_values_for_csdind_years.csv")
+
+# run the model
+# https://bcallaway11.github.io/did/reference/att_gt.html
+did_control <- att_gt(
+    yname = "median_image_value", # outcome variable
+    tname = "time_period", # time variable
+    idname = "site_id", # id variable
+    gname = "group", # first treatment period variable
+    data = df, # data
+    control_group = "nevertreated", # set the comparison group as either "never treated" or "not yet treated"
+)
+
+did_notyettreated <- att_gt(
+    yname = "median_image_value", # outcome variable
+    tname = "time_period", # time variable
+    idname = "site_id", # id variable
+    gname = "group", # first treatment period variable
+    data = df, # data
+    control_group = "notyettreated", # set the comparison group as either "never treated" or "not yet treated"
+)
+
+# aggregate the results
+did_control_agg <- aggte(
+    did_control,
+    type = "dynamic", 
+    na.rm = TRUE
+)
+
+did_notyettreated_agg <- aggte(
+    did_notyettreated,
+    type = "dynamic", 
+    na.rm = TRUE
+)
+
+# view the results
+summary(did_control_agg)
+summary(did_notyettreated_agg)
+
+# plot group-time ATTs
+did_control_agg_plt <- ggdid(did_control_agg) +
+    labs(title = "Group-Time ATTs for Control Group", x = "Time Period", y = "ATT") +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+did_notyettreated_agg_plt <- ggdid(did_notyettreated_agg) +
+    labs(title = "Group-Time ATTs for Not Yet Treated Group", x = "Time Period", y = "ATT") +
+    theme_bw() + 
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+print(did_control_agg_plt)
+print(did_notyettreated_agg_plt)
+```

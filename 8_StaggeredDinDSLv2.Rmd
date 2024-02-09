@@ -175,13 +175,24 @@ write_csv(df, "./data/nightlight_values_for_csdind.csv")
 # read in the data
 df <- read_csv("./data/nightlight_values_for_csdind.csv")
 
+glimpse(df)
+
+# use muldridge mundlak estimator
 staggered_did <- plm(
-    image_value ~ site_name * time_period,
+    image_value ~ site_name * months_since_treatment,
     data = df, 
     index = c("site_name", "time_period"), 
     model = "within"
 )
 
-summary(staggered_did)
+
+# staggered_did <- plm(
+#     image_value ~ site_name * time_period,
+#     data = df, 
+#     index = c("site_name", "time_period"), 
+#     model = "within"
+# )
+
+# summary(staggered_did)
 # taking over 5 minutes to run :(
 ```
