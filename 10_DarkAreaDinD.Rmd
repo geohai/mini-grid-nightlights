@@ -11,7 +11,63 @@ library(did)
 library(lubridate)
 ```
 
-## Read in Data & View Summary Statistics
+## Read in Dark Area Data
+```{r}
+# read in data
+tree_df <- read_csv("./data/dark/nighttime_trees_melt_df.csv")
+water_df <- read_csv("./data/dark/nighttime_water_melt_df.csv")
+glimpse(tree_df)
+
+# create a column called type
+tree_df <- tree_df %>%
+    mutate(type = "tree")
+water_df <- water_df %>%
+    mutate(type = "water")
+
+# mutate the id column to include the type
+tree_df <- tree_df %>%
+    mutate(id = paste0("tree_", id))
+water_df <- water_df %>%
+    mutate(id = paste0("water_", id))
+
+# combine the two datasets
+dark_df <- bind_rows(tree_df, water_df)
+
+# add dashes to the image_date column instead of 20140101 to 2014-01-01
+dark_df <- dark_df %>%
+    mutate(image_date = str_replace(image_date, "(\\d{4})(\\d{2})(\\d{2})", "\\1-\\2-\\3"))
+
+# convert image_date to date
+dark_df$image_date <- as.Date(dark_df$image_date)
+
+dark_df <- dark_df %>%
+    mutate(id = as.factor(id))
+
+# plot the brightness over time by each id
+dark_df %>%
+    ggplot(aes(x = image_date, y = image_value, color = id)) +
+    geom_line() +
+    labs(title = "Brightness Over Time by ID", x = "Image Date", y = "Image Value") +
+    theme_bw() + 
+        # hide legend  
+    theme(legend.position = "none")
+
+# create a scatterplot of image values by over time colored by type
+dark_df %>%
+    ggplot(aes(x = image_date, y = image_value, color = type)) +
+    geom_point() +
+    labs(title = "Brightness Over Time by Type", x = "Image Date", y = "Image Value") +
+    theme_bw()
+```
+
+## NOTES FOR NEXT TIME
+- Clean the data to remove outliers above 3SD and below 0. 
+- Set the low values to 0, drop the high values altogether
+- Repeat the DinD analysis with the SL datasets
+- Use trees and water as control sites instead of other villages
+- Try with and without not-yet-treated sites as controls
+
+## Read in Mini-Grid Data & View Summary Statistics
 ```{r}
 # read in data
 df <- read_csv("./data/nightlight_values_v2.csv")
