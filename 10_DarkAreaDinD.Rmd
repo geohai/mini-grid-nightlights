@@ -213,6 +213,41 @@ df %>%
 write_csv(df, "./data/dark/dark_df_plus_grids_for_csdind.csv")
 ```
 
+## Visualize the Data Before Modeling
+```{r}
+# read in the data
+df <- read_csv("./data/dark/dark_df_plus_grids_for_csdind.csv")
+
+# change "CBIL" and "PowerGen" to "mini-grid"
+df$site_type <- ifelse(df$site_type == "CBIL" | df$site_type == "PowerGen", "mini-grid", df$site_type)
+# change "Control" to "control"
+df$site_type <- ifelse(df$site_type == "Control", "control", df$site_type)
+
+
+# visualize image_value by image_date for each site_id
+df %>%
+    ggplot(aes(x = image_date, y = image_value, color = site_name)) +
+    geom_line() +
+    labs(title = "Image Values Over Time by Site ID", x = "Image Date", y = "Image Value") +
+    theme_bw() + 
+        # hide legend
+    theme(legend.position = "none")
+
+
+
+# color the dots in the scatter plot by site_type
+# set water to blue, tree to green, control to yellow, and CBIL and PowerGen to red
+df %>%
+    ggplot(aes(x = image_date, y = image_value, color = site_type)) +
+    # geom_point() +
+    # geom_smooth() +
+    geom_quantile() +
+    labs(title = "Image Values Over Time by Site ID", x = "Image Date", y = "Image Value") +
+    theme_bw() +
+    scale_fill_manual(values=c("yellow", "red", "green", "blue"))
+
+```
+
 ## Run the Analysis
 ```{r}
 # read in the data
@@ -254,35 +289,24 @@ did_control_agg_plt <- ggdid(did_control_agg) +
 
 print(did_control_agg_plt)
 ```
-Warnings while running model:
-1: In pre_process_did(yname = yname, tname = tname, idname = idname,  :
-  Dropped 7 observations while converting to balanced panel.
-2: In pre_process_did(yname = yname, tname = tname, idname = idname,  :
-  Be aware that there are some small groups in your dataset.
-  Check groups: 66,68,70,71,72,76,81,85,87,88,89,90,97,99,100,101,103.
-3: In att_gt(yname = "image_value", tname = "time_period", idname = "site_id",  :
-  Not returning pre-test Wald statistic due to singular covariance matrix
 
-## Results
-Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. <https://doi.org/10.1016/j.jeconom.2020.12.001>, <https://arxiv.org/abs/1803.09015> 
 
-### Control Group
-Overall summary of ATT's based on event-study/dynamic aggregation:  
-     ATT    Std. Error     [ 95%  Conf. Int.] 
- -0.0781        0.0545    -0.1849      0.0288 
-
-### Not Yet Treated Group
-Overall summary of ATT's based on event-study/dynamic aggregation:  
-     ATT    Std. Error     [ 95%  Conf. Int.] 
- -0.0773        0.0485    -0.1723      0.0178 
 
 ## Rerun with years as time periods instead of months
 ```{r}
 # read in the data
-df <- read_csv("./data/nightlight_values_for_csdind.csv")
+df <- read_csv("./data/dark/dark_df_plus_grids_for_csdind.csv")
 
 # view data
 glimpse(df)
+
+# pull out the earliest date
+start_date <- min(df$image_date)
+end_date <- max(df$image_date)
+start_year <- year(start_date)
+end_year <- year(end_date)
+start_month <- month(start_date)
+end_month <- month(end_date)
 
 # take the mean image value for each site for each year
 df <- df %>%
@@ -299,6 +323,8 @@ df$group <- df$year_commissioned - start_year + 1
 
 # put all 'Control' sites into group 0
 df$group[df$site_type == "Control"] <- 0
+df$group[df$site_type == "tree"] <- 0
+df$group[df$site_type == "water"] <- 0
 
 # add a time period variable which is year_image - start_year
 df$time_period <- df$year_image - start_year + 1
@@ -307,13 +333,13 @@ df$time_period <- df$year_image - start_year + 1
 glimpse(df)
 
 # export df to csv
-write_csv(df, "./data/nightlight_values_for_csdind_years.csv")
+write_csv(df, "./data/dark/dark_df_plus_grids_for_csdind_years.csv")
 ```
 
-## Rerun the Analysis
+## Rerun the DinD Analysis with Years as Time Periods
 ```{r}
 # read in the data
-df <- read_csv("./data/nightlight_values_for_csdind_years.csv")
+df <- read_csv("./data/dark/dark_df_plus_grids_for_csdind_years.csv")
 
 # run the model
 # https://bcallaway11.github.io/did/reference/att_gt.html
@@ -326,13 +352,43 @@ did_control <- att_gt(
     control_group = "nevertreated", # set the comparison group as either "never treated" or "not yet treated"
 )
 
-did_notyettreated <- att_gt(
+# aggregate the results
+did_control_agg <- aggte(
+    did_control,
+    type = "dynamic", 
+    na.rm = TRUE
+)
+
+# view the results
+summary(did_control_agg)
+
+# plot group-time ATTs
+did_control_agg_plt <- ggdid(did_control_agg) +
+    labs(title = "Group-Time ATTs for Control Group", x = "Time Period", y = "ATT") +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+print(did_control_agg_plt)
+```
+
+## Rerun the DinD Analysis with Years as Time Periods for Each of the Three Groups
+```{r}
+# read in the data
+df <- read_csv("./data/dark/dark_df_plus_grids_for_csdind_years.csv")
+
+# just trees and mini-grids
+df <- df %>%
+    filter(site_type != "Control" & site_type != "water")
+
+# run the model
+# https://bcallaway11.github.io/did/reference/att_gt.html
+did_control <- att_gt(
     yname = "median_image_value", # outcome variable
     tname = "time_period", # time variable
     idname = "site_id", # id variable
     gname = "group", # first treatment period variable
     data = df, # data
-    control_group = "notyettreated", # set the comparison group as either "never treated" or "not yet treated"
+    control_group = "nevertreated", # set the comparison group as either "never treated" or "not yet treated"
 )
 
 # aggregate the results
@@ -342,27 +398,24 @@ did_control_agg <- aggte(
     na.rm = TRUE
 )
 
-did_notyettreated_agg <- aggte(
-    did_notyettreated,
-    type = "dynamic", 
-    na.rm = TRUE
-)
-
 # view the results
 summary(did_control_agg)
-summary(did_notyettreated_agg)
 
 # plot group-time ATTs
 did_control_agg_plt <- ggdid(did_control_agg) +
-    labs(title = "Group-Time ATTs for Control Group", x = "Time Period", y = "ATT") +
+    labs(title = "Group-Time ATTs for Trees vs Mini-Grids", x = "Time Period", y = "ATT") +
     theme_bw() +
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 
-did_notyettreated_agg_plt <- ggdid(did_notyettreated_agg) +
-    labs(title = "Group-Time ATTs for Not Yet Treated Group", x = "Time Period", y = "ATT") +
-    theme_bw() + 
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
-
 print(did_control_agg_plt)
-print(did_notyettreated_agg_plt)
+
+# do it with villages and trees
+
+# plot brightness over time for each of the sites 
+# see where the bright one is
+# color code by type of site to check visually
+# think about it in terms of theories
+# "Limitations of Using Nightlights for Rural Electrification Mapping"
+
+
 ```

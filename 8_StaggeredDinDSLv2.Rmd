@@ -185,7 +185,6 @@ staggered_did <- plm(
     model = "within"
 )
 
-
 # staggered_did <- plm(
 #     image_value ~ site_name * time_period,
 #     data = df, 
