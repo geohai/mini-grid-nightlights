@@ -240,8 +240,8 @@ df %>%
 df %>%
     ggplot(aes(x = image_date, y = image_value, color = site_type)) +
     # geom_point() +
-    # geom_smooth() +
-    geom_quantile() +
+    geom_smooth() +
+    # geom_quantile() +
     labs(title = "Image Values Over Time by Site ID", x = "Image Date", y = "Image Value") +
     theme_bw() +
     scale_fill_manual(values=c("yellow", "red", "green", "blue"))
@@ -254,9 +254,9 @@ df %>%
 df <- read_csv("./data/dark/dark_df_plus_grids_for_csdind.csv")
 
 # # filter out all observations with site_type = "Control"
-# df <- df %>%
-#     filter(site_type != "Control")
-# glimpse(df)
+df <- df %>%
+    filter(site_type != "Control")
+glimpse(df)
 
 # run the model
 # https://bcallaway11.github.io/did/reference/att_gt.html
@@ -341,6 +341,10 @@ write_csv(df, "./data/dark/dark_df_plus_grids_for_csdind_years.csv")
 # read in the data
 df <- read_csv("./data/dark/dark_df_plus_grids_for_csdind_years.csv")
 
+# filter out all observations with site_type = "Control"
+df <- df %>%
+    filter(site_type != "Control")
+    
 # run the model
 # https://bcallaway11.github.io/did/reference/att_gt.html
 did_control <- att_gt(
