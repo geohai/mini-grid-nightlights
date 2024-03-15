@@ -14,8 +14,8 @@ library(lubridate)
 ## Read in Dark Area Data
 ```{r}
 # read in data
-tree_df <- read_csv("./data/dark/nighttime_trees_melt_df.csv")
-water_df <- read_csv("./data/dark/nighttime_water_melt_df.csv")
+tree_df <- read_csv("./data/dark_sl/nighttime_trees_melt_df.csv")
+water_df <- read_csv("./data/dark_sl/nighttime_water_melt_df.csv")
 glimpse(tree_df)
 
 # create a column called type
@@ -61,13 +61,13 @@ dark_df %>%
     theme_bw()
 
 # export df to csv
-write_csv(dark_df, "./data/dark/dark_df.csv")
+write_csv(dark_df, "./data/dark_sl/dark_df.csv")
 ```
 
 ## Data Cleaning
 ```{r}
 # read in data
-dark_df <- read_csv("./data/dark/dark_df.csv")
+dark_df <- read_csv("./data/dark_sl/dark_df.csv")
 
 # set any negative values to 0
 dark_df <- dark_df %>%
@@ -109,7 +109,7 @@ dark_df %>%
     theme(legend.position = "none")
 
 # export df to csv
-write_csv(dark_df, "./data/dark/dark_df_clean.csv")
+write_csv(dark_df, "./data/dark_sl/dark_df_clean.csv")
 
 # TODO >> try again dropping any values above the max
 ```
@@ -129,7 +129,7 @@ Note: this analysis can be run without control sites! Worth re-running on the CL
 ## Create a Treatment Group Variable
 ```{r}
 # read in data
-df <- read_csv("./data/dark/dark_df_clean.csv")
+df <- read_csv("./data/dark_sl/dark_df_clean.csv")
 
 # convert id variable to factor to integer
 df$site_name <- as.factor(df$id)
@@ -167,14 +167,14 @@ ggplot(df, aes(x = group)) +
 
 # export df to csv
 # View(df)
-write_csv(df, "./data/dark/dark_df_for_csdind.csv")
+write_csv(df, "./data/dark_sl/dark_df_for_csdind.csv")
 ```
 
 ## Read in the Grid Data for DinD & Combine with Dark DF
 ```{r}
 # read in the data
 grid_df <- read_csv("./data/sl/nightlight_values_for_csdind.csv")
-dark_df <- read_csv("./data/dark/dark_df_for_csdind.csv")
+dark_df <- read_csv("./data/dark_sl/dark_df_for_csdind.csv")
 
 # glimpse both dfs
 glimpse(grid_df)
@@ -210,19 +210,31 @@ df %>%
     theme(legend.position = "none")
 
 # export df to csv
-write_csv(df, "./data/dark/dark_df_plus_grids_for_csdind.csv")
+write_csv(df, "./data/dark_sl/dark_df_plus_grids_for_csdind.csv")
 ```
 
 ## Visualize the Data Before Modeling
 ```{r}
 # read in the data
-df <- read_csv("./data/dark/dark_df_plus_grids_for_csdind.csv")
+df <- read_csv("./data/dark_sl/dark_df_plus_grids_for_csdind.csv")
 
 # change "CBIL" and "PowerGen" to "mini-grid"
-df$site_type <- ifelse(df$site_type == "CBIL" | df$site_type == "PowerGen", "mini-grid", df$site_type)
+# df$site_type <- ifelse(df$site_type == "CBIL" | df$site_type == "PowerGen", "mini-grid", df$site_type)
 # change "Control" to "control"
 df$site_type <- ifelse(df$site_type == "Control", "control", df$site_type)
 
+# filter out PowerGen mini-grids
+df <- df %>%
+    filter(site_type != "PowerGen")
+
+# change site type from CBIL to mini-grid
+df$site_type <- ifelse(df$site_type == "CBIL", "village w/ mini-grid", df$site_type)
+
+# change control to village
+df$site_type <- ifelse(df$site_type == "control", "village w/o mini-grid", df$site_type)
+
+# change tree to forest
+df$site_type <- ifelse(df$site_type == "tree", "forest", df$site_type)
 
 # visualize image_value by image_date for each site_id
 df %>%
@@ -246,12 +258,18 @@ df %>%
     theme_bw() +
     scale_fill_manual(values=c("yellow", "red", "green", "blue"))
 
+# replot with goem_smooth
+df %>%
+    ggplot(aes(x = image_date, y = image_value, color = site_type)) +
+    geom_smooth( ) +
+    labs(title = "Image Values Over Time by Site Type", x = "Year", y = "Nighttime Brightness (nW/sr/cm^2)") +
+    theme_bw()
 ```
 
 ## Run the Analysis
 ```{r}
 # read in the data
-df <- read_csv("./data/dark/dark_df_plus_grids_for_csdind.csv")
+df <- read_csv("./data/dark_sl/dark_df_plus_grids_for_csdind.csv")
 
 # # filter out all observations with site_type = "Control"
 df <- df %>%
@@ -295,7 +313,7 @@ print(did_control_agg_plt)
 ## Rerun with years as time periods instead of months
 ```{r}
 # read in the data
-df <- read_csv("./data/dark/dark_df_plus_grids_for_csdind.csv")
+df <- read_csv("./data/dark_sl/dark_df_plus_grids_for_csdind.csv")
 
 # view data
 glimpse(df)
@@ -333,13 +351,13 @@ df$time_period <- df$year_image - start_year + 1
 glimpse(df)
 
 # export df to csv
-write_csv(df, "./data/dark/dark_df_plus_grids_for_csdind_years.csv")
+write_csv(df, "./data/dark_sl/dark_df_plus_grids_for_csdind_years.csv")
 ```
 
 ## Rerun the DinD Analysis with Years as Time Periods
 ```{r}
 # read in the data
-df <- read_csv("./data/dark/dark_df_plus_grids_for_csdind_years.csv")
+df <- read_csv("./data/dark_sl/dark_df_plus_grids_for_csdind_years.csv")
 
 # filter out all observations with site_type = "Control"
 df <- df %>%
@@ -368,7 +386,7 @@ summary(did_control_agg)
 
 # plot group-time ATTs
 did_control_agg_plt <- ggdid(did_control_agg) +
-    labs(title = "Group-Time ATTs for Control Group", x = "Time Period", y = "ATT") +
+    labs(title = "Average Treatment Effect for Villages with Mini-Grids", x = "Years from Commissioning", y = "Nighttime Brightness (nW/sr/cm^2)") +
     theme_bw() +
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 
@@ -378,7 +396,7 @@ print(did_control_agg_plt)
 ## Rerun the DinD Analysis with Years as Time Periods for Each of the Three Groups
 ```{r}
 # read in the data
-df <- read_csv("./data/dark/dark_df_plus_grids_for_csdind_years.csv")
+df <- read_csv("./data/dark_sl/dark_df_plus_grids_for_csdind_years.csv")
 
 # just trees and mini-grids
 df <- df %>%

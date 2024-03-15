@@ -1,0 +1,431 @@
+# Callaway & Sant'Anna Difference in Difference Analysis for a Staggered Treatment
+
+This notebook uses the Callaway & Sant'Anna (2020) Difference in Difference analysis for a staggered treatment. 
+The original paper can be found [here](https://www.sciencedirect.com/science/article/pii/S0304407620300253).
+An online tutorial can be found [here](https://tilburgsciencehub.com/topics/analyze/causal-inference/did/staggered-did/).
+
+## Load Packages
+```{r}
+library(tidyverse)
+library(did)
+library(lubridate)
+```
+
+## Read in Dark Area Data
+```{r}
+# read in data
+dark_df <- read_csv("data/dark_africa/nighttime_rural_melt_df.csv")
+glimpse(dark_df)
+
+# rename Map to type
+dark_df <- dark_df %>%
+    mutate(type = as.factor(Map))
+
+# add dashes to the image_date column instead of 20140101 to 2014-01-01
+dark_df <- dark_df %>%
+    mutate(image_date = str_replace(image_date, "(\\d{4})(\\d{2})(\\d{2})", "\\1-\\2-\\3"))
+
+# convert image_date to date
+dark_df$image_date <- as.Date(dark_df$image_date)
+
+# convert id to factor
+dark_df <- dark_df %>%
+    mutate(id = as.factor(id))
+
+# plot the brightness over time by each id
+dark_df %>%
+    ggplot(aes(x = image_date, y = image_value, color = id)) +
+    geom_line() +
+    labs(title = "Brightness Over Time by ID", x = "Image Date", y = "Image Value") +
+    theme_bw() + 
+        # hide legend  
+    theme(legend.position = "none")
+
+# create a scatterplot of image values by over time colored by type
+dark_df %>%
+    ggplot(aes(x = image_date, y = image_value, color = type)) +
+    geom_smooth() +
+    labs(title = "Brightness Over Time by Type", x = "Image Date", y = "Image Value") +
+    theme_bw()
+
+# export df to csv
+write_csv(dark_df, "./data/dark_sl/dark_df.csv")
+```
+
+## Data Cleaning
+```{r}
+# read in data
+dark_df <- read_csv("./data/dark_sl/dark_df.csv")
+
+# set any negative values to 0
+dark_df <- dark_df %>%
+    mutate(image_value = ifelse(image_value < 0, 0, image_value))
+
+# calculate the standard deviation of all sites
+sd_all <- sd(dark_df$image_value)
+
+# calculate the mean value per site
+dark_df <- dark_df %>%
+    group_by(id) %>%
+    mutate(mean_image_value = mean(image_value)) %>%
+    ungroup()
+
+# calculate the max and min value for each site as the mean +/- 3 * sd
+dark_df <- dark_df %>%
+    mutate(min_image_value = mean_image_value - 3 * sd_all,
+           max_image_value = mean_image_value + 3 * sd_all)
+
+# count how many image values are above the max or below the min
+n_outliers <- dark_df %>%
+    filter(image_value > max_image_value | image_value < min_image_value) %>%
+    count()
+print(n_outliers) # 67
+print(nrow(dark_df))  # 12862
+
+# replace image_value with max if image_value > max and with min if image_value < min
+dark_df <- dark_df %>%
+    mutate(image_value = ifelse(image_value > max_image_value, max_image_value, image_value),
+           image_value = ifelse(image_value < min_image_value, min_image_value, image_value))
+
+# revisualize
+dark_df %>%
+    ggplot(aes(x = image_date, y = image_value, color = id)) +
+    geom_line() +
+    labs(title = "Image Values Over Time", x = "Image Date", y = "Image Value") +
+    theme_bw() + 
+        # hide legend
+    theme(legend.position = "none")
+
+# export df to csv
+write_csv(dark_df, "./data/dark_sl/dark_df_clean.csv")
+
+# TODO >> try again dropping any values above the max
+```
+
+## NOTES FOR NEXT TIME
+- Repeat the DinD analysis with the SL datasets
+- Use trees and water as control sites instead of other villages
+- Try with and without not-yet-treated sites as controls
+
+## Data Requirements
+- There must be a unit-specific identifier variable that does not vary over time. Here that is site_name.
+- There must be a time variable. Here that is image_date.
+- There must be a group variable, which is usually the period when an individual first becomes treated. For units that are never treated, this variable should be set to 0! Here, we'll group by the date_commissioned variable.
+- The variables must be of numeric class.
+Note: this analysis can be run without control sites! Worth re-running on the CLUB-ER dataset. 
+
+## Create a Treatment Group Variable
+```{r}
+# read in data
+df <- read_csv("./data/dark_sl/dark_df_clean.csv")
+
+# convert id variable to factor to integer
+df$site_name <- as.factor(df$id)
+
+# pull out the earliest date
+start_date <- min(df$image_date)
+end_date <- max(df$image_date)
+start_year <- year(start_date)
+end_year <- year(end_date)
+start_month <- month(start_date)
+end_month <- month(end_date)
+
+# set the date commissioned for all Control sites to the earliest date
+df$date_commissioned <- start_date
+
+# try the years
+df$year_commissioned <- year(df$date_commissioned)
+df$year_image <- year(df$image_date)
+
+# extract months
+df$month_commissioned <- month(df$date_commissioned)
+df$month_image <- month(df$image_date)
+
+# convert dates into months since first image
+df$group <- (df$year_commissioned - start_year) * 12 + (df$month_commissioned - start_month)
+df$time_period <- (df$year_image - start_year) * 12 + (df$month_image - start_month)
+
+# plot histogram of group variable
+# set y max to 120
+ggplot(df, aes(x = group)) +
+    geom_histogram(bins = 100) +
+    xlim(-5, 120) +
+    labs(title = "Histogram of Group Variable", x = "Group", y = "Count") +
+    theme_bw()
+
+# export df to csv
+# View(df)
+write_csv(df, "./data/dark_sl/dark_df_for_csdind.csv")
+```
+
+## Read in the Grid Data for DinD & Combine with Dark DF
+```{r}
+# read in the data
+grid_df <- read_csv("./data/sl/nightlight_values_for_csdind.csv")
+dark_df <- read_csv("./data/dark_sl/dark_df_for_csdind.csv")
+
+# glimpse both dfs
+glimpse(grid_df)
+glimpse(dark_df)
+
+# set all negative image_value values to 0
+grid_df <- grid_df %>%
+    mutate(image_value = ifelse(image_value < 0, 0, image_value))
+
+
+# rename dark_df$id to dark_df$site_name
+dark_df <- dark_df %>%
+    rename(site_name = id, site_type = type)
+
+# drop dark_df$center
+dark_df <- dark_df %>%
+    select(-center)
+
+# bind the dfs
+df <- bind_rows(grid_df, dark_df)
+glimpse(df)
+
+# recreate site_id column with unique integers for each site_name
+df$site_id <- as.integer(as.factor(df$site_name))
+
+# visualize image_value by image_date for each site_id
+df %>%
+    ggplot(aes(x = image_date, y = image_value, color = site_name)) +
+    geom_line() +
+    labs(title = "Image Values Over Time by Site ID", x = "Image Date", y = "Image Value") +
+    theme_bw() + 
+        # hide legend
+    theme(legend.position = "none")
+
+# export df to csv
+write_csv(df, "./data/dark_sl/dark_df_plus_grids_for_csdind.csv")
+```
+
+## Visualize the Data Before Modeling
+```{r}
+# read in the data
+df <- read_csv("./data/dark_sl/dark_df_plus_grids_for_csdind.csv")
+
+# change "CBIL" and "PowerGen" to "mini-grid"
+# df$site_type <- ifelse(df$site_type == "CBIL" | df$site_type == "PowerGen", "mini-grid", df$site_type)
+# change "Control" to "control"
+df$site_type <- ifelse(df$site_type == "Control", "control", df$site_type)
+
+# filter out PowerGen mini-grids
+df <- df %>%
+    filter(site_type != "PowerGen")
+
+# change site type from CBIL to mini-grid
+df$site_type <- ifelse(df$site_type == "CBIL", "village w/ mini-grid", df$site_type)
+
+# change control to village
+df$site_type <- ifelse(df$site_type == "control", "village w/o mini-grid", df$site_type)
+
+# change tree to forest
+df$site_type <- ifelse(df$site_type == "tree", "forest", df$site_type)
+
+# visualize image_value by image_date for each site_id
+df %>%
+    ggplot(aes(x = image_date, y = image_value, color = site_name)) +
+    geom_line() +
+    labs(title = "Image Values Over Time by Site ID", x = "Image Date", y = "Image Value") +
+    theme_bw() + 
+        # hide legend
+    theme(legend.position = "none")
+
+
+
+# color the dots in the scatter plot by site_type
+# set water to blue, tree to green, control to yellow, and CBIL and PowerGen to red
+df %>%
+    ggplot(aes(x = image_date, y = image_value, color = site_type)) +
+    # geom_point() +
+    geom_smooth() +
+    # geom_quantile() +
+    labs(title = "Image Values Over Time by Site ID", x = "Image Date", y = "Image Value") +
+    theme_bw() +
+    scale_fill_manual(values=c("yellow", "red", "green", "blue"))
+
+# replot with goem_smooth
+df %>%
+    ggplot(aes(x = image_date, y = image_value, color = site_type)) +
+    geom_smooth( ) +
+    labs(title = "Image Values Over Time by Site Type", x = "Year", y = "Nighttime Brightness (nW/sr/cm^2)") +
+    theme_bw()
+```
+
+## Run the Analysis
+```{r}
+# read in the data
+df <- read_csv("./data/dark_sl/dark_df_plus_grids_for_csdind.csv")
+
+# # filter out all observations with site_type = "Control"
+df <- df %>%
+    filter(site_type != "Control")
+glimpse(df)
+
+# run the model
+# https://bcallaway11.github.io/did/reference/att_gt.html
+did_control <- att_gt(
+    yname = "image_value", # outcome variable
+    tname = "time_period", # time variable
+    idname = "site_id", # id variable
+    gname = "group", # first treatment period variable
+    data = df, # data
+    control_group = "nevertreated", # set the comparison group as either "never treated" or "not yet treated"
+)
+
+summary(did_control)
+
+# aggregate the results
+did_control_agg <- aggte(
+    did_control,
+    type = "dynamic", 
+    na.rm = TRUE
+)
+
+# view the results
+summary(did_control_agg)
+
+# plot group-time ATTs
+did_control_agg_plt <- ggdid(did_control_agg) +
+    labs(title = "Group-Time ATTs for Control Group", x = "Time Period", y = "ATT") +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+print(did_control_agg_plt)
+```
+
+
+
+## Rerun with years as time periods instead of months
+```{r}
+# read in the data
+df <- read_csv("./data/dark_sl/dark_df_plus_grids_for_csdind.csv")
+
+# view data
+glimpse(df)
+
+# pull out the earliest date
+start_date <- min(df$image_date)
+end_date <- max(df$image_date)
+start_year <- year(start_date)
+end_year <- year(end_date)
+start_month <- month(start_date)
+end_month <- month(end_date)
+
+# take the mean image value for each site for each year
+df <- df %>%
+    group_by(site_id, site_name, year_image, year_commissioned, site_type) %>%
+    summarize(
+        mean_image_value = mean(image_value),
+        median_image_value = median(image_value)
+    )
+
+glimpse(df)
+
+# create group variable
+df$group <- df$year_commissioned - start_year + 1
+
+# put all 'Control' sites into group 0
+df$group[df$site_type == "Control"] <- 0
+df$group[df$site_type == "tree"] <- 0
+df$group[df$site_type == "water"] <- 0
+
+# add a time period variable which is year_image - start_year
+df$time_period <- df$year_image - start_year + 1
+
+# glimpse the head
+glimpse(df)
+
+# export df to csv
+write_csv(df, "./data/dark_sl/dark_df_plus_grids_for_csdind_years.csv")
+```
+
+## Rerun the DinD Analysis with Years as Time Periods
+```{r}
+# read in the data
+df <- read_csv("./data/dark_sl/dark_df_plus_grids_for_csdind_years.csv")
+
+# filter out all observations with site_type = "Control"
+df <- df %>%
+    filter(site_type != "Control")
+    
+# run the model
+# https://bcallaway11.github.io/did/reference/att_gt.html
+did_control <- att_gt(
+    yname = "median_image_value", # outcome variable
+    tname = "time_period", # time variable
+    idname = "site_id", # id variable
+    gname = "group", # first treatment period variable
+    data = df, # data
+    control_group = "nevertreated", # set the comparison group as either "never treated" or "not yet treated"
+)
+
+# aggregate the results
+did_control_agg <- aggte(
+    did_control,
+    type = "dynamic", 
+    na.rm = TRUE
+)
+
+# view the results
+summary(did_control_agg)
+
+# plot group-time ATTs
+did_control_agg_plt <- ggdid(did_control_agg) +
+    labs(title = "Average Treatment Effect for Villages with Mini-Grids", x = "Years from Commissioning", y = "Nighttime Brightness (nW/sr/cm^2)") +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+print(did_control_agg_plt)
+```
+
+## Rerun the DinD Analysis with Years as Time Periods for Each of the Three Groups
+```{r}
+# read in the data
+df <- read_csv("./data/dark_sl/dark_df_plus_grids_for_csdind_years.csv")
+
+# just trees and mini-grids
+df <- df %>%
+    filter(site_type != "Control" & site_type != "water")
+
+# run the model
+# https://bcallaway11.github.io/did/reference/att_gt.html
+did_control <- att_gt(
+    yname = "median_image_value", # outcome variable
+    tname = "time_period", # time variable
+    idname = "site_id", # id variable
+    gname = "group", # first treatment period variable
+    data = df, # data
+    control_group = "nevertreated", # set the comparison group as either "never treated" or "not yet treated"
+)
+
+# aggregate the results
+did_control_agg <- aggte(
+    did_control,
+    type = "dynamic", 
+    na.rm = TRUE
+)
+
+# view the results
+summary(did_control_agg)
+
+# plot group-time ATTs
+did_control_agg_plt <- ggdid(did_control_agg) +
+    labs(title = "Group-Time ATTs for Trees vs Mini-Grids", x = "Time Period", y = "ATT") +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+print(did_control_agg_plt)
+
+# do it with villages and trees
+
+# plot brightness over time for each of the sites 
+# see where the bright one is
+# color code by type of site to check visually
+# think about it in terms of theories
+# "Limitations of Using Nightlights for Rural Electrification Mapping"
+
+
+```
