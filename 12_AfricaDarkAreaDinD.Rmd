@@ -9,17 +9,32 @@ An online tutorial can be found [here](https://tilburgsciencehub.com/topics/anal
 library(tidyverse)
 library(did)
 library(lubridate)
+library(sf)
 ```
 
-## Read in Dark Area Data
+## Read in Dark Area Data, Clean, Re-export
 ```{r}
 # read in data
-dark_df <- read_csv("data/dark_africa/nighttime_rural_melt_df.csv")
+africa_rural_df <- read_csv("data/dark_africa/nighttime_rural_melt_df.csv")
+africa_dark_df <- read_csv("data/dark_africa/nighttime_dark_melt_df.csv")
+
+# glimpse the dfs
+glimpse(africa_rural_df)
+glimpse(africa_dark_df)
+
+# merge the dfs
+dark_df <- bind_rows(africa_rural_df, africa_dark_df)
 glimpse(dark_df)
+rm(africa_dark_df, africa_rural_df)
 
 # rename Map to type
 dark_df <- dark_df %>%
-    mutate(type = as.factor(Map))
+    mutate(landcover = as.factor(Map))
+# drop Map column
+dark_df <- dark_df %>%
+    select(-Map)
+# set type to factor
+dark_df$type <- as.factor(dark_df$type)
 
 # add dashes to the image_date column instead of 20140101 to 2014-01-01
 dark_df <- dark_df %>%
@@ -28,67 +43,242 @@ dark_df <- dark_df %>%
 # convert image_date to date
 dark_df$image_date <- as.Date(dark_df$image_date)
 
-# convert id to factor
+# update the id column to include the type
 dark_df <- dark_df %>%
-    mutate(id = as.factor(id))
+    mutate(id = as.factor(paste0(type, "_", id)))
 
-# plot the brightness over time by each id
-dark_df %>%
-    ggplot(aes(x = image_date, y = image_value, color = id)) +
-    geom_line() +
-    labs(title = "Brightness Over Time by ID", x = "Image Date", y = "Image Value") +
-    theme_bw() + 
-        # hide legend  
-    theme(legend.position = "none")
+# the coordinates are stored in the column "center" as <chr> "[40.985976795541156, 11.365131764777153]", convert this to sf object
+dark_sf <- dark_df %>%
+    mutate(center = str_remove_all(center, "\\[|\\]")) %>%
+    separate(center, into = c("lon", "lat"), sep = ",") %>%
+    mutate(lon = as.numeric(lon), lat = as.numeric(lat)) %>%
+    st_as_sf(coords = c("lon", "lat"), crs = 4326)
 
-# create a scatterplot of image values by over time colored by type
-dark_df %>%
+# glimpse the sf
+glimpse(dark_sf)
+# export df to csv
+write_csv(dark_df, "./data/dark_africa/dark_df.csv")
+# export sf to rds
+saveRDS(dark_sf, "./data/dark_africa/dark_sf.rds")
+```
+
+## Merge with Mini-Grid Data
+```{r}
+# read in data
+africa_minigrid_df <- read_csv("data/cluber/nighttime_cluber_df_melt.csv")
+
+# glimpse the df
+glimpse(africa_minigrid_df)
+
+# create an id column with an integer for each unique site_name
+africa_minigrid_df <- africa_minigrid_df %>%
+    mutate(id = as.integer(as.factor(site_name)))
+
+# convert into sf, use column "geometry" as is
+africa_minigrid_sf <- st_as_sf(africa_minigrid_df, wkt = "geometry")
+
+# add dashes to the image_date column instead of 20140101 to 2014-01-01
+africa_minigrid_sf <- africa_minigrid_sf %>%
+    mutate(image_date = str_replace(image_date, "(\\d{4})(\\d{2})(\\d{2})", "\\1-\\2-\\3"))
+
+# convert image_date to date
+africa_minigrid_sf$image_date <- as.Date(africa_minigrid_sf$image_date)
+
+# drop status, developer, customers, and country column
+africa_minigrid_sf <- africa_minigrid_sf %>%
+    select(-status, -developer, -customers, -country, -source, -site_name)
+
+# add in type column with value "minigrid"
+africa_minigrid_sf <- africa_minigrid_sf %>%
+    mutate(type = "minigrid")
+# add in a landcover column with value NA
+africa_minigrid_sf <- africa_minigrid_sf %>%
+    mutate(landcover = NA)
+st_crs(africa_minigrid_sf) <- 4326
+# add in type to id column
+africa_minigrid_sf <- africa_minigrid_sf %>%
+    mutate(id = as.factor(paste0(type, "_", id)))
+# drop that first random column
+africa_minigrid_sf <- africa_minigrid_sf %>%
+    select(-1)
+glimpse(africa_minigrid_sf)
+
+
+
+# read in dark_sf
+dark_sf <- readRDS("./data/dark_africa/dark_sf.rds")
+# add in a date_commissioned column with value NA
+dark_sf <- dark_sf %>%
+    mutate(date_commissioned = NA)
+glimpse(dark_sf)
+# set crs to 4326
+st_crs(dark_sf) <- 4326
+
+# combine the two dfs
+africa_sf <- bind_rows(dark_sf, africa_minigrid_sf)
+
+# export as RDS
+saveRDS(africa_sf, "./data/dark_africa/africa_sf.rds")
+```
+
+## Visualize Raw Data
+```{r}
+# read in data
+africa_sf <- readRDS("./data/dark_africa/africa_sf.rds")
+glimpse(africa_sf)
+
+# exclude type "built"
+africa_sf <- africa_sf %>%
+    filter(type != "built")
+
+# create a smooth plot of image values by over time colored by type
+africa_sf %>%
     ggplot(aes(x = image_date, y = image_value, color = type)) +
     geom_smooth() +
     labs(title = "Brightness Over Time by Type", x = "Image Date", y = "Image Value") +
     theme_bw()
-
-# export df to csv
-write_csv(dark_df, "./data/dark_sl/dark_df.csv")
 ```
 
-## Data Cleaning
+## Visualize Spatially
 ```{r}
 # read in data
-dark_df <- read_csv("./data/dark_sl/dark_df.csv")
+africa_sf <- readRDS("./data/dark_africa/africa_sf.rds")
+
+# create a dataframe with a grouping
+africa_sf_by_site <- africa_sf %>%
+    group_by(id) %>%
+    summarize(
+        mean = mean(image_value),
+        median = median(image_value),
+        min = min(image_value),
+        max = max(image_value),
+        sd = sd(image_value),
+        type = first(type),
+        landcover = first(landcover)
+    )
+glimpse(africa_sf_by_site)
+
+# plot each point with geom_sf and color by type, size by median
+africa_sf_by_site %>%
+    ggplot() +
+    geom_sf(aes(color = type, size = median)) +
+    labs(title = "Spatial Distribution of Image Values by Type", x = "Longitude", y = "Latitude") +
+    theme_bw()
+
+# export africa_sf_by_site to csv and RDS
+write_csv(africa_sf_by_site, "./data/dark_africa/africa_sf_by_site.csv")
+saveRDS(africa_sf_by_site, "./data/dark_africa/africa_sf_by_site.rds")
+
+```
+
+
+## Look at Variances
+```{r}
+# read in data
+africa_sf <- readRDS("./data/dark_africa/africa_sf.rds")
+
+# convert to df and drop geometry column
+africa_df <- st_drop_geometry(africa_sf)
+
+# calculate the standard deviation of all data points
+sd_all <- sd(africa_df$image_value)
+mean_all <- mean(africa_df$image_value)
+min_all <- min(africa_df$image_value)
+max_all <- max(africa_df$image_value)
+median_all <- median(africa_df$image_value)
+
+# calculate the standard deviation by type
+africa_df_stats <- africa_df %>%
+    group_by(type) %>%
+    summarize(
+        sd = sd(image_value),
+        mean = mean(image_value),
+        min = min(image_value),
+        max = max(image_value),
+        median = median(image_value)
+    )
+
+print(africa_df_stats)
+ 
+
+# visualize as box and whisker plot
+africa_df %>%
+    ggplot(aes(x = type, y = image_value, fill = type)) +
+    geom_boxplot() +
+    labs(title = "Box and Whisker Plot of Image Values by Type", x = "Type", y = "Image Value") +
+    # set ylim to -1, 3
+    ylim(-0.25, 0.75) +
+    theme_bw()
+```
+> print(dark_df_stats)
+# A tibble: 5 × 6
+  type       sd  mean    min    max median
+  <fct>   <dbl> <dbl>  <dbl>  <dbl>  <dbl>
+1 built  10.8   7.62   0     52.9    2.63 
+2 desert  0.123 0.190 -0.392  0.535  0.205
+3 jungle  0.151 0.157 -0.460  4.05   0.151
+4 ocean   0.134 0.149 -0.497  1.13   0.157
+5 rural   0.326 0.186 -0.475 38.5    0.184
+
+Takeaways: 
+1. Built is way brighter than the other types by a factor of 10
+2. Rural has a much higher variance than the other types, likely because it has many different land cover types
+3. Ocean has the lowest mean at 0.149, median of 1.57
+4. Jungle has the second lowerst mean at 0.157, median of 0.151
+5. Desert has the lowest variance at 0.123 compared to ocean at 1.34 and jungle at 0.151
+
+########################################################################################################################
+########################################################################################################################
+########################################################################################################################
+########################################################################################################################
+########################################################################################################################
+########################################################################################################################
+########################################################################################################################
+########################################################################################################################
+########################################################################################################################
+########################################################################################################################
+########################################################################################################################
+########################################################################################################################
+
+Run DinD and ANOVA
+
+## Handle Data Outliers
+```{r}
+# read in data
+dark_sf <- read_csv("./data/dark_africa/dark_sf.csv")
 
 # set any negative values to 0
-dark_df <- dark_df %>%
+dark_sf <- dark_sf %>%
     mutate(image_value = ifelse(image_value < 0, 0, image_value))
 
 # calculate the standard deviation of all sites
-sd_all <- sd(dark_df$image_value)
+sd_all <- sd(dark_sf$image_value)
 
 # calculate the mean value per site
-dark_df <- dark_df %>%
+dark_sf <- dark_sf %>%
     group_by(id) %>%
     mutate(mean_image_value = mean(image_value)) %>%
     ungroup()
 
 # calculate the max and min value for each site as the mean +/- 3 * sd
-dark_df <- dark_df %>%
+dark_sf <- dark_sf %>%
     mutate(min_image_value = mean_image_value - 3 * sd_all,
            max_image_value = mean_image_value + 3 * sd_all)
 
 # count how many image values are above the max or below the min
-n_outliers <- dark_df %>%
+n_outliers <- dark_sf %>%
     filter(image_value > max_image_value | image_value < min_image_value) %>%
     count()
 print(n_outliers) # 67
-print(nrow(dark_df))  # 12862
+print(nrow(dark_sf))  # 12862
 
 # replace image_value with max if image_value > max and with min if image_value < min
-dark_df <- dark_df %>%
+dark_sf <- dark_sf %>%
     mutate(image_value = ifelse(image_value > max_image_value, max_image_value, image_value),
            image_value = ifelse(image_value < min_image_value, min_image_value, image_value))
 
 # revisualize
-dark_df %>%
+dark_sf %>%
     ggplot(aes(x = image_date, y = image_value, color = id)) +
     geom_line() +
     labs(title = "Image Values Over Time", x = "Image Date", y = "Image Value") +
@@ -97,7 +287,7 @@ dark_df %>%
     theme(legend.position = "none")
 
 # export df to csv
-write_csv(dark_df, "./data/dark_sl/dark_df_clean.csv")
+write_csv(dark_sf, "./data/dark_africa/dark_sf_clean.csv")
 
 # TODO >> try again dropping any values above the max
 ```
@@ -117,7 +307,7 @@ Note: this analysis can be run without control sites! Worth re-running on the CL
 ## Create a Treatment Group Variable
 ```{r}
 # read in data
-df <- read_csv("./data/dark_sl/dark_df_clean.csv")
+df <- read_csv("./data/dark_africa/dark_sf_clean.csv")
 
 # convert id variable to factor to integer
 df$site_name <- as.factor(df$id)
@@ -155,34 +345,34 @@ ggplot(df, aes(x = group)) +
 
 # export df to csv
 # View(df)
-write_csv(df, "./data/dark_sl/dark_df_for_csdind.csv")
+write_csv(df, "./data/dark_africa/dark_sf_for_csdind.csv")
 ```
 
 ## Read in the Grid Data for DinD & Combine with Dark DF
 ```{r}
 # read in the data
 grid_df <- read_csv("./data/sl/nightlight_values_for_csdind.csv")
-dark_df <- read_csv("./data/dark_sl/dark_df_for_csdind.csv")
+dark_sf <- read_csv("./data/dark_africa/dark_sf_for_csdind.csv")
 
 # glimpse both dfs
 glimpse(grid_df)
-glimpse(dark_df)
+glimpse(dark_sf)
 
 # set all negative image_value values to 0
 grid_df <- grid_df %>%
     mutate(image_value = ifelse(image_value < 0, 0, image_value))
 
 
-# rename dark_df$id to dark_df$site_name
-dark_df <- dark_df %>%
+# rename dark_sf$id to dark_sf$site_name
+dark_sf <- dark_sf %>%
     rename(site_name = id, site_type = type)
 
-# drop dark_df$center
-dark_df <- dark_df %>%
+# drop dark_sf$center
+dark_sf <- dark_sf %>%
     select(-center)
 
 # bind the dfs
-df <- bind_rows(grid_df, dark_df)
+df <- bind_rows(grid_df, dark_sf)
 glimpse(df)
 
 # recreate site_id column with unique integers for each site_name
@@ -198,13 +388,13 @@ df %>%
     theme(legend.position = "none")
 
 # export df to csv
-write_csv(df, "./data/dark_sl/dark_df_plus_grids_for_csdind.csv")
+write_csv(df, "./data/dark_africa/dark_sf_plus_grids_for_csdind.csv")
 ```
 
 ## Visualize the Data Before Modeling
 ```{r}
 # read in the data
-df <- read_csv("./data/dark_sl/dark_df_plus_grids_for_csdind.csv")
+df <- read_csv("./data/dark_africa/dark_sf_plus_grids_for_csdind.csv")
 
 # change "CBIL" and "PowerGen" to "mini-grid"
 # df$site_type <- ifelse(df$site_type == "CBIL" | df$site_type == "PowerGen", "mini-grid", df$site_type)
@@ -257,7 +447,7 @@ df %>%
 ## Run the Analysis
 ```{r}
 # read in the data
-df <- read_csv("./data/dark_sl/dark_df_plus_grids_for_csdind.csv")
+df <- read_csv("./data/dark_africa/dark_sf_plus_grids_for_csdind.csv")
 
 # # filter out all observations with site_type = "Control"
 df <- df %>%
@@ -301,7 +491,7 @@ print(did_control_agg_plt)
 ## Rerun with years as time periods instead of months
 ```{r}
 # read in the data
-df <- read_csv("./data/dark_sl/dark_df_plus_grids_for_csdind.csv")
+df <- read_csv("./data/dark_africa/dark_sf_plus_grids_for_csdind.csv")
 
 # view data
 glimpse(df)
@@ -339,13 +529,13 @@ df$time_period <- df$year_image - start_year + 1
 glimpse(df)
 
 # export df to csv
-write_csv(df, "./data/dark_sl/dark_df_plus_grids_for_csdind_years.csv")
+write_csv(df, "./data/dark_africa/dark_sf_plus_grids_for_csdind_years.csv")
 ```
 
 ## Rerun the DinD Analysis with Years as Time Periods
 ```{r}
 # read in the data
-df <- read_csv("./data/dark_sl/dark_df_plus_grids_for_csdind_years.csv")
+df <- read_csv("./data/dark_africa/dark_sf_plus_grids_for_csdind_years.csv")
 
 # filter out all observations with site_type = "Control"
 df <- df %>%
@@ -384,7 +574,7 @@ print(did_control_agg_plt)
 ## Rerun the DinD Analysis with Years as Time Periods for Each of the Three Groups
 ```{r}
 # read in the data
-df <- read_csv("./data/dark_sl/dark_df_plus_grids_for_csdind_years.csv")
+df <- read_csv("./data/dark_africa/dark_sf_plus_grids_for_csdind_years.csv")
 
 # just trees and mini-grids
 df <- df %>%
