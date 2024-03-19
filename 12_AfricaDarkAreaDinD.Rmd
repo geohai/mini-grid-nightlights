@@ -66,7 +66,7 @@ saveRDS(dark_sf, "./data/dark_africa/dark_sf.rds")
 ```{r}
 # read in data
 africa_minigrid_df <- read_csv("data/cluber/nighttime_cluber_df_melt.csv")
-
+africa_minigrid_landcover_df <- read_csv("data/cluber/landcover_cluber_gdf.csv")
 # glimpse the df
 glimpse(africa_minigrid_df)
 
