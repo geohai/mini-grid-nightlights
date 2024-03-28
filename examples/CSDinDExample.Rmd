@@ -9,37 +9,44 @@ library(tidyverse)
 library(lubridate)
 ```
 
+## Set Global variables
+```{r}
+original_file_name <- "data/sl/nightlight_values_for_csdind.csv"
+clean_monthly_file_name <- "data/sl/nightlight_values_for_csdind_nonames.csv"
+clean_yearly_file_name <- "data/sl/nightlight_values_for_csdind_years.csv"
+```
+
 ## Clean up the Existing DF
 Only need to run once to generate the data for the example. 
 ```{r}
-# # read in the data
-# df <- read_csv("data/sl/nightlight_values_for_csdind.csv")
-# glimpse(df)
+# read in the data
+df <- read_csv(original_file_name)
+glimpse(df)
 
-# # drop the site_name and extra image stats column
-# df <- df %>%
-#     select(
-#         -site_name, 
-#         -mean_image_value, 
-#         -min_image_value, 
-#         -max_image_value,
-#         -year_commissioned,
-#         -year_image,
-#         -month_image,
-#         -month_commissioned
-#     )
+# drop the site_name and extra image stats column
+df <- df %>%
+    select(
+        -site_name, 
+        -mean_image_value, 
+        -min_image_value, 
+        -max_image_value,
+        -year_commissioned,
+        -year_image,
+        -month_image,
+        -month_commissioned
+    )
 
-# # convert the site_types not equal to "Control" to "Mini-grid"
-# df$site_type[df$site_type != "Control"] <- "Mini-grid"
+# convert the site_types not equal to "Control" to "Mini-grid"
+df$site_type[df$site_type != "Control"] <- "Mini-grid"
 
-# # rewrite the df to a csv
-# write_csv(df, "data/sl/nightlight_values_for_csdind_nonames.csv")
+# rewrite the df to a csv
+write_csv(df, clean_monthly_file_name)
 ```
 
 ## Read in the Data & Visualize
 ```{r}
 # read in the data
-df <- read_csv("data/sl/nightlight_values_for_csdind_nonames.csv")
+df <- read_csv(clean_monthly_file_name)
 
 # convert certain columns to factors
 df$site_type <- as.factor(df$site_type)
@@ -60,9 +67,10 @@ df %>%
 ## Run the DinD Analysis with Months as Time Periods
 ```{r}
 # read in the data
-df <- read_csv("data/sl/nightlight_values_for_csdind_nonames.csv")
+df <- read_csv(clean_monthly_file_name)
 
 # run the model
+# note these take about 30 seconds to run
 # https://bcallaway11.github.io/did/reference/att_gt.html
 did_control <- att_gt(
     yname = "image_value", # outcome variable
@@ -132,7 +140,7 @@ Overall summary of ATT's based on event-study/dynamic aggregation:
 ## Aggregate Data into Yearly Periods instead of Monthly Periods
 ```{r}
 # read in the data
-df <- read_csv("data/sl/nightlight_values_for_csdind_nonames.csv")
+df <- read_csv(clean_monthly_file_name)
 
 # convert certain columns to factors
 df$site_type <- as.factor(df$site_type)
@@ -167,13 +175,13 @@ df$time_period <- df$year_image - start_year + 1
 glimpse(df)
 
 # export df to csv
-write_csv(df, "data/sl/nightlight_values_for_csdind_years.csv")
+write_csv(df, clean_yearly_file_name)
 ```
 
 ## Rerun the Analysis
 ```{r}
 # read in the data
-df <- read_csv("data/sl/nightlight_values_for_csdind_years.csv")
+df <- read_csv(clean_yearly_file_name)
 
 # run the model
 # https://bcallaway11.github.io/did/reference/att_gt.html
