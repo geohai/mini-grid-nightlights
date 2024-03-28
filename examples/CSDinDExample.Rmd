@@ -1,0 +1,240 @@
+# Difference-in-Differences Analysis Example
+Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. <https://doi.org/10.1016/j.jeconom.2020.12.001>, <https://arxiv.org/abs/1803.09015> 
+R Package: https://cran.r-project.org/web/packages/did/index.html
+
+## Load Libraries
+```{r}
+library(did)
+library(tidyverse)
+library(lubridate)
+```
+
+## Clean up the Existing DF
+Only need to run once to generate the data for the example. 
+```{r}
+# # read in the data
+# df <- read_csv("data/sl/nightlight_values_for_csdind.csv")
+# glimpse(df)
+
+# # drop the site_name and extra image stats column
+# df <- df %>%
+#     select(
+#         -site_name, 
+#         -mean_image_value, 
+#         -min_image_value, 
+#         -max_image_value,
+#         -year_commissioned,
+#         -year_image,
+#         -month_image,
+#         -month_commissioned
+#     )
+
+# # convert the site_types not equal to "Control" to "Mini-grid"
+# df$site_type[df$site_type != "Control"] <- "Mini-grid"
+
+# # rewrite the df to a csv
+# write_csv(df, "data/sl/nightlight_values_for_csdind_nonames.csv")
+```
+
+## Read in the Data & Visualize
+```{r}
+# read in the data
+df <- read_csv("data/sl/nightlight_values_for_csdind_nonames.csv")
+
+# convert certain columns to factors
+df$site_type <- as.factor(df$site_type)
+df$site_id <- as.factor(df$site_id)
+
+# view data
+glimpse(df)
+
+# visualize the image_value over time with image_date by grouped by site_type
+df %>%
+    ggplot(aes(x = image_date, y = image_value, color = site_type)) +
+    geom_point() +
+    geom_smooth() +
+    labs(title = "Image Value Over Time by Site Type in Sierra Leone", x = "Image Date", y = "Image Value") +
+    theme_bw()
+```
+
+## Run the DinD Analysis with Months as Time Periods
+```{r}
+# read in the data
+df <- read_csv("data/sl/nightlight_values_for_csdind_nonames.csv")
+
+# run the model
+# https://bcallaway11.github.io/did/reference/att_gt.html
+did_control <- att_gt(
+    yname = "image_value", # outcome variable
+    tname = "time_period", # time variable
+    idname = "site_id", # id variable
+    gname = "group", # first treatment period variable
+    data = df, # data
+    control_group = "nevertreated", # set the comparison group as either "never treated" or "not yet treated"
+)
+
+did_notyettreated <- att_gt(
+    yname = "image_value", # outcome variable
+    tname = "time_period", # time variable
+    idname = "site_id", # id variable
+    gname = "group", # first treatment period variable
+    data = df, # data
+    control_group = "notyettreated", # set the comparison group as either "never treated" or "not yet treated"
+)
+
+summary(did_control)
+summary(did_notyettreated)
+
+# aggregate the results
+did_control_agg <- aggte(
+    did_control,
+    type = "dynamic", 
+    na.rm = TRUE
+)
+
+did_notyettreated_agg <- aggte(
+    did_notyettreated,
+    type = "dynamic", 
+    na.rm = TRUE
+)
+
+# view the results
+summary(did_control_agg)
+summary(did_notyettreated_agg)
+
+# plot group-time ATTs
+did_control_agg_plt <- ggdid(did_control_agg) +
+    labs(title = "Group-Time ATTs for Control Group", x = "Time Period", y = "ATT") +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+did_notyettreated_agg_plt <- ggdid(did_notyettreated_agg) +
+    labs(title = "Group-Time ATTs for Not Yet Treated Group", x = "Time Period", y = "ATT") +
+    theme_bw() + 
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+print(did_control_agg_plt)
+print(did_notyettreated_agg_plt)
+```
+
+## Results of Monthly Analysis
+
+### Control Group
+Overall summary of ATT's based on event-study/dynamic aggregation:  
+     ATT    Std. Error     [ 95%  Conf. Int.] 
+ -0.0672        0.0514    -0.1679      0.0334 
+
+### Not Yet Treated Group
+Overall summary of ATT's based on event-study/dynamic aggregation:  
+     ATT    Std. Error     [ 95%  Conf. Int.] 
+ -0.0681        0.0515    -0.1691      0.0328 
+
+## Aggregate Data into Yearly Periods instead of Monthly Periods
+```{r}
+# read in the data
+df <- read_csv("data/sl/nightlight_values_for_csdind_nonames.csv")
+
+# convert certain columns to factors
+df$site_type <- as.factor(df$site_type)
+df$site_id <- as.factor(df$site_id)
+
+# view data
+glimpse(df)
+
+# add in year_image and year_commissioned
+df$year_image <- year(df$image_date)
+df$year_commissioned <- year(df$date_commissioned)
+
+# take the mean image value for each site for each year
+df <- df %>%
+    group_by(site_id, site_type, year_image, year_commissioned) %>%
+    summarize(
+        image_value_mean = mean(image_value),
+        image_value_median = median(image_value)
+    )
+
+glimpse(df)
+
+start_year <- min(df$year_image)
+
+# create group variable, controls are 0
+df$group <- df$year_commissioned - start_year + 1
+
+# add a time period variable which is year_image - start_year, start year is 1
+df$time_period <- df$year_image - start_year + 1
+
+# glimpse the head
+glimpse(df)
+
+# export df to csv
+write_csv(df, "data/sl/nightlight_values_for_csdind_years.csv")
+```
+
+## Rerun the Analysis
+```{r}
+# read in the data
+df <- read_csv("data/sl/nightlight_values_for_csdind_years.csv")
+
+# run the model
+# https://bcallaway11.github.io/did/reference/att_gt.html
+did_control <- att_gt(
+    yname = "image_value_median", # outcome variable
+    tname = "time_period", # time variable
+    idname = "site_id", # id variable
+    gname = "group", # first treatment period variable
+    data = df, # data
+    control_group = "nevertreated", # set the comparison group as either "never treated" or "not yet treated"
+)
+
+did_notyettreated <- att_gt(
+    yname = "image_value_median", # outcome variable
+    tname = "time_period", # time variable
+    idname = "site_id", # id variable
+    gname = "group", # first treatment period variable
+    data = df, # data
+    control_group = "notyettreated", # set the comparison group as either "never treated" or "not yet treated"
+)
+# no warnings this time!
+
+# aggregate the results
+did_control_agg <- aggte(
+    did_control,
+    type = "dynamic", 
+    na.rm = TRUE
+)
+
+did_notyettreated_agg <- aggte(
+    did_notyettreated,
+    type = "dynamic", 
+    na.rm = TRUE
+)
+
+# view the results
+summary(did_control_agg)
+summary(did_notyettreated_agg)
+
+# plot group-time ATTs
+did_control_agg_plt <- ggdid(did_control_agg) +
+    labs(title = "Group-Time ATTs for Control Group", x = "Time Period", y = "ATT") +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+did_notyettreated_agg_plt <- ggdid(did_notyettreated_agg) +
+    labs(title = "Group-Time ATTs for Not Yet Treated Group", x = "Time Period", y = "ATT") +
+    theme_bw() + 
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+print(did_control_agg_plt)
+print(did_notyettreated_agg_plt)
+```
+
+## Results of Yearly Analysis
+### Control Group
+Overall summary of ATT's based on event-study/dynamic aggregation:  
+     ATT    Std. Error     [ 95%  Conf. Int.] 
+ -0.0057        0.0071    -0.0195      0.0081 
+ 
+### Not Yet Treated Group
+Overall summary of ATT's based on event-study/dynamic aggregation:  
+     ATT    Std. Error     [ 95%  Conf. Int.] 
+ -0.0075        0.0074    -0.0219      0.0069 
