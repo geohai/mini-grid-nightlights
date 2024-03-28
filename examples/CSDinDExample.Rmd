@@ -11,9 +11,9 @@ library(lubridate)
 
 ## Set Global variables
 ```{r}
-original_file_name <- "data/sl/nightlight_values_for_csdind.csv"
-clean_monthly_file_name <- "data/sl/nightlight_values_for_csdind_nonames.csv"
-clean_yearly_file_name <- "data/sl/nightlight_values_for_csdind_years.csv"
+original_file_name <- "/Users/ilyonsg/Documents/research/thesis/CB_Lab_Mapping_Economic_Migration/data/sl/nightlight_values_for_csdind.csv"
+clean_monthly_file_name <- "/Users/ilyonsg/Documents/research/thesis/CB_Lab_Mapping_Economic_Migration/data/sl/nightlight_values_for_csdind_nonames.csv"
+clean_yearly_file_name <- "/Users/ilyonsg/Documents/research/thesis/CB_Lab_Mapping_Economic_Migration/data/sl/nightlight_values_for_csdind_years.csv"
 ```
 
 ## Clean up the Existing DF
@@ -90,8 +90,9 @@ did_notyettreated <- att_gt(
     control_group = "notyettreated", # set the comparison group as either "never treated" or "not yet treated"
 )
 
-summary(did_control)
-summary(did_notyettreated)
+# view very long form of the results
+# summary(did_control)
+# summary(did_notyettreated)
 
 # aggregate the results
 did_control_agg <- aggte(
