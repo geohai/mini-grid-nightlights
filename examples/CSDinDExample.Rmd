@@ -19,28 +19,28 @@ clean_yearly_file_name <- "data/sl/nightlight_values_for_csdind_years.csv"
 ## Clean up the Existing DF
 Only need to run once to generate the data for the example. 
 ```{r}
-# read in the data
-df <- read_csv(original_file_name)
-glimpse(df)
+# # read in the data
+# df <- read_csv(original_file_name)
+# glimpse(df)
 
-# drop the site_name and extra image stats column
-df <- df %>%
-    select(
-        -site_name, 
-        -mean_image_value, 
-        -min_image_value, 
-        -max_image_value,
-        -year_commissioned,
-        -year_image,
-        -month_image,
-        -month_commissioned
-    )
+# # drop the site_name and extra image stats column
+# df <- df %>%
+#     select(
+#         -site_name, 
+#         -mean_image_value, 
+#         -min_image_value, 
+#         -max_image_value,
+#         -year_commissioned,
+#         -year_image,
+#         -month_image,
+#         -month_commissioned
+#     )
 
-# convert the site_types not equal to "Control" to "Mini-grid"
-df$site_type[df$site_type != "Control"] <- "Mini-grid"
+# # convert the site_types not equal to "Control" to "Mini-grid"
+# df$site_type[df$site_type != "Control"] <- "Mini-grid"
 
-# rewrite the df to a csv
-write_csv(df, clean_monthly_file_name)
+# # rewrite the df to a csv
+# write_csv(df, clean_monthly_file_name)
 ```
 
 ## Read in the Data & Visualize
