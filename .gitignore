@@ -135,5 +135,7 @@ lab_data_dict.yml
 # Mac files
 .DS_Store
 
-*.csv
-data/
+data/cbil/
+data/pg/
+data/sl/
+data/gee/
