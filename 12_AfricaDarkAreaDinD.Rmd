@@ -155,8 +155,12 @@ africa_df_melt <- readRDS("./data/dark_africa/africa_df_melt.rds")
 glimpse(africa_df_melt)
 
 # # exclude type "built"
-# africa_df_melt <- africa_df_melt %>%
-#     filter(type != "built")
+africa_df_melt <- africa_df_melt %>%
+    filter(type != "built")
+
+# exclude type "minigrid"
+africa_df_melt <- africa_df_melt %>%
+    filter(type != "minigrid")
 
 # create a smooth plot of image values by over time colored by type
 africa_df_melt %>%
@@ -166,46 +170,11 @@ africa_df_melt %>%
     theme_bw()
 ```
 
-## Visualize Spatially
-```{r}
-# read in data
-africa_sf <- readRDS("./data/dark_africa/africa_sf.rds")
-
-# create a dataframe with a grouping
-africa_sf_by_site <- africa_sf %>%
-    group_by(id) %>%
-    summarize(
-        mean = mean(image_value),
-        median = median(image_value),
-        min = min(image_value),
-        max = max(image_value),
-        sd = sd(image_value),
-        type = first(type),
-        landcover = first(landcover)
-    )
-glimpse(africa_sf_by_site)
-
-# plot each point with geom_sf and color by type, size by median
-africa_sf_by_site %>%
-    ggplot() +
-    geom_sf(aes(color = type, size = median)) +
-    labs(title = "Spatial Distribution of Image Values by Type", x = "Longitude", y = "Latitude") +
-    theme_bw()
-
-# export africa_sf_by_site to csv and RDS
-write_csv(africa_sf_by_site, "./data/dark_africa/africa_sf_by_site.csv")
-saveRDS(africa_sf_by_site, "./data/dark_africa/africa_sf_by_site.rds")
-
-```
-
-
 ## Look at Variances
 ```{r}
 # read in data
-africa_sf <- readRDS("./data/dark_africa/africa_sf.rds")
-
-# convert to df and drop geometry column
-africa_df <- st_drop_geometry(africa_sf)
+africa_df_melt <- readRDS("./data/dark_africa/africa_df_melt.rds")
+africa_df <- africa_df_melt
 
 # calculate the standard deviation of all data points
 sd_all <- sd(africa_df$image_value)
@@ -238,14 +207,14 @@ africa_df %>%
     theme_bw()
 ```
 > print(dark_df_stats)
-# A tibble: 5 × 6
-  type       sd  mean    min    max median
-  <fct>   <dbl> <dbl>  <dbl>  <dbl>  <dbl>
-1 built  10.8   7.62   0     52.9    2.63 
-2 desert  0.123 0.190 -0.392  0.535  0.205
-3 jungle  0.151 0.157 -0.460  4.05   0.151
-4 ocean   0.134 0.149 -0.497  1.13   0.157
-5 rural   0.326 0.186 -0.475 38.5    0.184
+
+  type        sd  mean    min     max median
+  <fct>    <dbl> <dbl>  <dbl>   <dbl>  <dbl>
+1 built    8.31  5.29  -0.248   280.     2.18 
+2 desert   0.126 0.193 -0.392   0.592  0.206
+3 jungle   0.151 0.158 -0.460   4.05   0.151
+4 minigrid 1.96  0.555 -0.413   72.3    0.235
+5 ocean    0.143 0.172 -0.349   1.03   0.172
 
 Takeaways: 
 1. Built is way brighter than the other types by a factor of 10
