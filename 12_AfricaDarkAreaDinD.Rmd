@@ -12,127 +12,154 @@ library(lubridate)
 library(sf)
 ```
 
-## Read in Dark Area Data, Clean, Re-export
+## Notes
+##############################################################################################################################################################################
+##############################################################################################################################################################################
+##############################################################################################################################################################################
+##############################################################################################################################################################################
+##############################################################################################################################################################################
+##############################################################################################################################################################################
+clean  
+pull into R  
+compare rural points by map class  
+compare to built points  
+compare to ocean juungle and desert points  
+comapre to mini-grids  
+compare to control sites  
+
+
+## Read in the Dark Area Data, Clean, Re-export
 ```{r}
 # read in data
-africa_rural_df <- read_csv("data/dark_africa/nighttime_rural_melt_df.csv")
-africa_dark_df <- read_csv("data/dark_africa/nighttime_dark_melt_df.csv")
+africa_dark_df <- read_csv("data/dark_africa/nighttime_dark_gdf.csv")
 
-# glimpse the dfs
-glimpse(africa_rural_df)
-glimpse(africa_dark_df)
+# convert to sf
+africa_dark_sf <- st_as_sf(africa_dark_df, wkt = "geometry", crs = 4326)
 
-# merge the dfs
-dark_df <- bind_rows(africa_rural_df, africa_dark_df)
-glimpse(dark_df)
-rm(africa_dark_df, africa_rural_df)
+# add a column date_commissioned equal to December 1, 2013
+africa_dark_sf <- africa_dark_sf %>%
+    mutate(date_commissioned = as.Date("2013-12-01"))
 
-# rename Map to type
-dark_df <- dark_df %>%
-    mutate(landcover = as.factor(Map))
-# drop Map column
-dark_df <- dark_df %>%
-    select(-Map)
-# set type to factor
-dark_df$type <- as.factor(dark_df$type)
+# glimpse
+glimpse(africa_dark_sf)
 
-# add dashes to the image_date column instead of 20140101 to 2014-01-01
-dark_df <- dark_df %>%
-    mutate(image_date = str_replace(image_date, "(\\d{4})(\\d{2})(\\d{2})", "\\1-\\2-\\3"))
+# visualize the sf with ggplot geom_sf with different colors for type
+ggplot(africa_dark_sf) +
+    geom_sf(aes(color = type)) +
+    labs(title = "Dark Area Points Sampled for Controls", x = "Longitude", y = "Latitude") +
+    theme_bw()
 
-# convert image_date to date
-dark_df$image_date <- as.Date(dark_df$image_date)
-
-# update the id column to include the type
-dark_df <- dark_df %>%
-    mutate(id = as.factor(paste0(type, "_", id)))
-
-# the coordinates are stored in the column "center" as <chr> "[40.985976795541156, 11.365131764777153]", convert this to sf object
-dark_sf <- dark_df %>%
-    mutate(center = str_remove_all(center, "\\[|\\]")) %>%
-    separate(center, into = c("lon", "lat"), sep = ",") %>%
-    mutate(lon = as.numeric(lon), lat = as.numeric(lat)) %>%
-    st_as_sf(coords = c("lon", "lat"), crs = 4326)
-
-# glimpse the sf
-glimpse(dark_sf)
-# export df to csv
-write_csv(dark_df, "./data/dark_africa/dark_df.csv")
-# export sf to rds
-saveRDS(dark_sf, "./data/dark_africa/dark_sf.rds")
+# export sf
+saveRDS(africa_dark_sf, "./data/dark_africa/africa_dark_sf.rds")
 ```
 
-## Merge with Mini-Grid Data
+## Read in the Mini-Grid Data
 ```{r}
 # read in data
-africa_minigrid_df <- read_csv("data/cluber/nighttime_cluber_df_melt.csv")
-africa_minigrid_landcover_df <- read_csv("data/cluber/landcover_cluber_gdf.csv")
-# glimpse the df
+africa_minigrid_df <- read_csv("data/cluber/nighttime_cluber_gdf.csv")
 glimpse(africa_minigrid_df)
 
-# create an id column with an integer for each unique site_name
-africa_minigrid_df <- africa_minigrid_df %>%
-    mutate(id = as.integer(as.factor(site_name)))
+# convert to sf with latitude and longitude columns into geometry
+africa_minigrid_sf <- st_as_sf(africa_minigrid_df, coords = c("longitude", "latitude"), crs = 4326)
 
-# convert into sf, use column "geometry" as is
-africa_minigrid_sf <- st_as_sf(africa_minigrid_df, wkt = "geometry")
-
-# add dashes to the image_date column instead of 20140101 to 2014-01-01
+glimpse(africa_minigrid_sf)
+# drop the columns country, customers, developer, site_name, source, and status
 africa_minigrid_sf <- africa_minigrid_sf %>%
+    select(-country, -customers, -developer, -site_name, -source, -status)
+
+# add a column "type" with value "minigrid"
+africa_minigrid_sf <- africa_minigrid_sf %>%
+    mutate(type = "minigrid")
+
+# visualize the sf with ggplot geom_sf with different colors for type
+ggplot(africa_minigrid_sf) +
+    geom_sf(aes(color = type)) +
+    labs(title = "Mini-Grid Points for Treatment", x = "Longitude", y = "Latitude") +
+    theme_bw()
+
+# export sf
+saveRDS(africa_minigrid_sf, "./data/dark_africa/africa_minigrid_sf.rds")
+```
+
+## Merge the Dark Area and Mini-Grid Data
+```{r}
+# read in the 2 sfs
+africa_dark_sf <- readRDS("./data/dark_africa/africa_dark_sf.rds")
+africa_minigrid_sf <- readRDS("./data/dark_africa/africa_minigrid_sf.rds")
+
+# merge the dfs
+africa_sf <- bind_rows(africa_minigrid_sf, africa_dark_sf)
+glimpse(africa_sf)
+rm(africa_minigrid_sf, africa_dark_sf)
+
+# rename Map to landcover
+africa_sf <- africa_sf %>%
+    mutate(landcover = as.factor(Map))
+# drop Map column
+africa_sf <- africa_sf %>%
+    select(-Map)
+# set type to factor
+africa_sf$type <- as.factor(africa_sf$type)
+
+# drop the first column ...1
+africa_sf <- africa_sf %>%
+    select(-1)
+# create an id column with an integer for each row
+africa_sf <- africa_sf %>%
+    mutate(id = as.factor(as.integer(row_number())))
+
+glimpse(africa_sf)
+
+# visualize the sf with ggplot geom_sf with different colors for type
+ggplot(africa_sf) +
+    geom_sf(aes(color = type)) +
+    labs(title = "Dark Area and Mini-Grid Points", x = "Longitude", y = "Latitude") +
+    theme_bw()
+# export combined sf
+saveRDS(africa_sf, "./data/dark_africa/africa_sf.rds")
+```
+
+## Melt the Dataset
+```{r}
+# read in the sf
+africa_sf <- readRDS("./data/dark_africa/africa_sf.rds")
+
+# convert to df without geometry
+africa_df <- st_drop_geometry(africa_sf)
+rm(africa_sf)
+
+# melt the df, keep the date_commissioned, type, landcover, and id columns
+africa_df_melt <- africa_df %>%
+    pivot_longer(cols = c(-date_commissioned, -type, -landcover, -id), names_to = "image_date", values_to = "image_value")
+rm(africa_df)
+# add dashes to the image_date column instead of 20140101 to 2014-01-01
+africa_df_melt <- africa_df_melt %>%
     mutate(image_date = str_replace(image_date, "(\\d{4})(\\d{2})(\\d{2})", "\\1-\\2-\\3"))
 
 # convert image_date to date
-africa_minigrid_sf$image_date <- as.Date(africa_minigrid_sf$image_date)
+africa_df_melt$image_date <- as.Date(africa_df_melt$image_date)
 
-# drop status, developer, customers, and country column
-africa_minigrid_sf <- africa_minigrid_sf %>%
-    select(-status, -developer, -customers, -country, -source, -site_name)
+# glimpse
+glimpse(africa_df_melt)
 
-# add in type column with value "minigrid"
-africa_minigrid_sf <- africa_minigrid_sf %>%
-    mutate(type = "minigrid")
-# add in a landcover column with value NA
-africa_minigrid_sf <- africa_minigrid_sf %>%
-    mutate(landcover = NA)
-st_crs(africa_minigrid_sf) <- 4326
-# add in type to id column
-africa_minigrid_sf <- africa_minigrid_sf %>%
-    mutate(id = as.factor(paste0(type, "_", id)))
-# drop that first random column
-africa_minigrid_sf <- africa_minigrid_sf %>%
-    select(-1)
-glimpse(africa_minigrid_sf)
-
-
-
-# read in dark_sf
-dark_sf <- readRDS("./data/dark_africa/dark_sf.rds")
-# add in a date_commissioned column with value NA
-dark_sf <- dark_sf %>%
-    mutate(date_commissioned = NA)
-glimpse(dark_sf)
-# set crs to 4326
-st_crs(dark_sf) <- 4326
-
-# combine the two dfs
-africa_sf <- bind_rows(dark_sf, africa_minigrid_sf)
-
-# export as RDS
-saveRDS(africa_sf, "./data/dark_africa/africa_sf.rds")
+# export df to csv
+write_csv(africa_df_melt, "./data/dark_africa/africa_df_melt.csv")
+# export sf to rds
+saveRDS(africa_df_melt, "./data/dark_africa/africa_df_melt.rds")
 ```
 
 ## Visualize Raw Data
 ```{r}
 # read in data
-africa_sf <- readRDS("./data/dark_africa/africa_sf.rds")
-glimpse(africa_sf)
+africa_df_melt <- readRDS("./data/dark_africa/africa_df_melt.rds")
+glimpse(africa_df_melt)
 
-# exclude type "built"
-africa_sf <- africa_sf %>%
-    filter(type != "built")
+# # exclude type "built"
+# africa_df_melt <- africa_df_melt %>%
+#     filter(type != "built")
 
 # create a smooth plot of image values by over time colored by type
-africa_sf %>%
+africa_df_melt %>%
     ggplot(aes(x = image_date, y = image_value, color = type)) +
     geom_smooth() +
     labs(title = "Brightness Over Time by Type", x = "Image Date", y = "Image Value") +
