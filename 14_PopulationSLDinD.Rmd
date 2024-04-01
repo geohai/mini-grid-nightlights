@@ -1,0 +1,229 @@
+# Callaway & Sant'Anna Difference in Difference Analysis for a Staggered Treatment
+
+This notebook uses the Callaway & Sant'Anna (2020) Difference in Difference analysis for a staggered treatment. 
+The original paper can be found [here](https://www.sciencedirect.com/science/article/pii/S0304407620300253).
+An online tutorial can be found [here](https://tilburgsciencehub.com/topics/analyze/causal-inference/did/staggered-did/).
+
+## Load Packages
+```{r}
+library(tidyverse)
+library(did)
+library(lubridate)
+library(sf)
+```
+
+## Read in Data & View Summary Statistics
+```{r}
+# read in data
+sl_pop_sf <- st_read("data/sl_pop/sl_pop.geojson")
+sl_pop_melt_sf <- st_read("data/sl_pop/sl_pop_melt.geojson")
+
+# view the data with geom_sf as points sized and colored by 'X2020' values
+ggplot(sl_pop_sf) +
+    geom_sf(aes(size = X2020, color = X2020)) +
+    scale_color_viridis_c() +
+    labs(title = "Community Population Sierra Leone in 2020", x = "Longitude", y = "Latitude") +
+    theme_bw()
+
+glimpse(sl_pop_sf)
+```
+
+## Clean Data
+## Convert Column Types
+```{r}
+# read in the data
+sl_pop_melt_sf <- st_read("data/sl_pop/sl_pop_melt.geojson")
+glimpse(sl_pop_melt_sf)
+
+# convert site_name to factor
+sl_pop_melt_sf$site_name <- as.factor(sl_pop_melt_sf$site_name)
+# convert the 'id' column to an integer
+sl_pop_melt_sf$id <- as.integer(sl_pop_melt_sf$site_name)
+# convert PowerGen and CBIL to 'Mini-grid'
+sl_pop_melt_sf$site_type[sl_pop_melt_sf$site_type == "PowerGen"] <- "Mini-grid"
+sl_pop_melt_sf$site_type[sl_pop_melt_sf$site_type == "CBIL"] <- "Mini-grid"
+# convert site_type to a factor
+sl_pop_melt_sf$site_type <- as.factor(sl_pop_melt_sf$site_type)
+# convert 'year' column to <date>
+sl_pop_melt_sf$year <- as.Date(sl_pop_melt_sf$year, format = "%Y")
+glimpse(sl_pop_melt_sf)
+# export as RDS
+saveRDS(sl_pop_melt_sf, "data/sl_pop/sl_pop_melt_sf.rds")
+```
+
+## Handle Outliers
+Import Data & Calculate Medians & IQRs by ID
+```{r}
+# reread in data
+sl_pop_melt_sf <- readRDS("data/sl_pop/sl_pop_melt_sf.rds")
+df <- sl_pop_melt_sf
+
+# find the median for each id, put it into a new column
+df$median <- ave(df$population, df$id, FUN = median)
+# find the upper 75% quartile for each id, put it into a new column
+df$q3 <- ave(df$population, df$id, FUN = function(x) quantile(x, 0.75))
+# find the lower 25% quartile for each id, put it into a new column
+df$q1 <- ave(df$population, df$id, FUN = function(x) quantile(x, 0.25))
+# calculate the IQR for each id, put it into a new column
+df$IQR <- df$q3 - df$q1
+# calculate the top whisker for each id, put it into a new column
+df$top_whisker <- df$q3 + 1.5 * df$IQR
+# calculate the bottom whisker for each id, put it into a new column
+df$bottom_whisker <- df$q1 - 1.5 * df$IQR
+
+glimpse(df)
+# count the number of outliers in the data
+df %>%
+    filter(population > top_whisker | population < bottom_whisker) %>%
+    count() ## just 1
+
+# convert any population that is above the top whisker to the top whisker
+df <- df %>%
+    mutate(population = ifelse(population > top_whisker, top_whisker, population))
+# convert any population that is below the bottom whisker to the bottom whisker
+df <- df %>%
+    mutate(population = ifelse(population < bottom_whisker, bottom_whisker, population))
+
+# drop the columns median, q1, q3, IQR, top_whisker, and bottom_whisker
+df <- df %>%
+    select(-median, -q1, -q3, -IQR, -top_whisker, -bottom_whisker)
+
+# export 
+saveRDS(df, "data/sl_pop/sl_pop_melt_sf_clean.rds")
+```
+
+## Create Some Visualizations
+```{r}
+# read in the data
+df <- readRDS("data/sl_pop/sl_pop_melt_sf_clean.rds")
+
+# plot the population by year by site_type
+ggplot(df, aes(x = year, y = population, color = site_type)) +
+    geom_point() +
+    geom_smooth() + 
+    labs(title = "Population by Year by Site Type", x = "Year", y = "Population") +
+    theme_bw()
+
+```
+
+## Data Requirements
+- There must be a unit-specific identifier variable that does not vary over time, integer format. Here that is id.
+- There must be a time variable. Here that is year.
+- There must be a group variable, which is usually the period when an individual first becomes treated. For units that are never treated, this variable should be set to 0! Here, we'll group by the date_commissioned variable.
+- The variables must be of numeric class.
+Note: this analysis can be run without control sites! Worth re-running on the CLUB-ER dataset. 
+
+## Prep Data for DinD
+```{r}
+# read in data
+df <- readRDS("data/sl_pop/sl_pop_melt_sf_clean.rds")
+
+# pull out the earliest date
+start_date <- min(df$year)
+end_date <- max(df$year)
+start_year <- year(start_date)
+end_year <- year(end_date)
+
+# set the date commissioned for all Control sites to be one year before the earliest date
+df$date_commissioned[df$site_type == "Control"] <- start_date - years(1)
+
+# extract the years from the dates
+df$year_commissioned <- year(df$date_commissioned)
+df$year_image <- year(df$year)
+
+# convert dates into years since first image
+df$group <- (df$year_commissioned - start_year) + 1 # 1 indexed, 0 for controls
+df$time_period <- (df$year_image - start_year) + 1 # 1 indexed
+
+
+# check for any NA values in any column
+df %>% st_drop_geometry() %>% summarise_all(~sum(is.na(.)))
+
+# plot histogram of group variable
+# set y max to 120
+ggplot(df, aes(x = group)) +
+    geom_histogram(binwidth = 1) +
+    xlim(-1, 25) +
+    labs(title = "Histogram of Group Variable", x = "Group", y = "Count") +
+    theme_bw()
+
+# export df to RDS
+saveRDS(df, "data/sl_pop/sl_pop_melt_sf_clean_dind.rds")
+```
+
+## Run the DinD Analysis
+```{r}
+# read in the data
+df <- readRDS("data/sl_pop/sl_pop_melt_sf_clean_dind.rds")
+
+# run the model
+# https://bcallaway11.github.io/did/reference/att_gt.html
+did_control <- att_gt(
+    yname = "population", # outcome variable
+    tname = "time_period", # time variable
+    idname = "id", # id variable
+    gname = "group", # first treatment period variable
+    data = df, # data
+    control_group = "nevertreated", # set the comparison group as either "never treated" or "not yet treated"
+)
+
+did_notyettreated <- att_gt(
+    yname = "population", # outcome variable
+    tname = "time_period", # time variable
+    idname = "id", # id variable
+    gname = "group", # first treatment period variable
+    data = df, # data
+    control_group = "notyettreated", # set the comparison group as either "never treated" or "not yet treated"
+)
+
+summary(did_control)
+summary(did_notyettreated)
+
+# aggregate the results
+did_control_agg <- aggte(
+    did_control,
+    type = "dynamic", 
+    na.rm = TRUE
+)
+
+did_notyettreated_agg <- aggte(
+    did_notyettreated,
+    type = "dynamic", 
+    na.rm = TRUE
+)
+
+# view the results
+summary(did_control_agg)
+summary(did_notyettreated_agg)
+
+# plot group-time ATTs
+did_control_agg_plt <- ggdid(did_control_agg) +
+    labs(title = "Group-Time ATTs for Control Group", x = "Time Period", y = "ATT") +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+did_notyettreated_agg_plt <- ggdid(did_notyettreated_agg) +
+    labs(title = "Group-Time ATTs for Not Yet Treated Group", x = "Time Period", y = "ATT") +
+    theme_bw() + 
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+print(did_control_agg_plt)
+print(did_notyettreated_agg_plt)
+```
+Warnings while running model:
+Warning message:
+In att_gt(yname = "population", tname = "time_period", idname = "id",  :
+  Not returning pre-test Wald statistic due to singular covariance matrix
+
+## Results
+Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. <https://doi.org/10.1016/j.jeconom.2020.12.001>, <https://arxiv.org/abs/1803.09015> 
+
+### Control Group
+Overall summary of ATT's based on event-study/dynamic aggregation:  
+      ATT    Std. Error     [ 95%  Conf. Int.]  
+ -46.9914       17.3284   -80.9544    -13.0285 *
+
+### Not Yet Treated Group
+Overall summary of ATT's based on event-study/dynamic aggregation:  
+      ATT    Std. Error     [ 95%  Conf. Int.]  
+ -46.5999       16.7274    -79.385    -13.8148 *
