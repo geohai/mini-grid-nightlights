@@ -1,0 +1,257 @@
+# Callaway & Sant'Anna Difference in Difference Analysis for a Staggered Treatment
+
+This notebook uses the Callaway & Sant'Anna (2020) Difference in Difference analysis for a staggered treatment. 
+The original paper can be found [here](https://www.sciencedirect.com/science/article/pii/S0304407620300253).
+An online tutorial can be found [here](https://tilburgsciencehub.com/topics/analyze/causal-inference/did/staggered-did/).
+
+## Load Packages
+```{r}
+library(tidyverse)
+library(did)
+library(lubridate)
+library(sf)
+```
+
+
+## Read in Data & View Summary Statistics
+```{r}
+# read in data
+pop_sf <- st_read("data/pop_africa/pop_clean.geojson")
+pop_melt_sf <- st_read("data/pop_africa/pop_melt.geojson")
+
+# view the data with geom_sf as points sized and colored by log('X2020') values
+ggplot(pop_sf) +
+    geom_sf(aes(size = X2020, color = log(X2020))) +
+    scale_color_viridis_c() +
+    scale_size(range = c(1, 20)) +
+    labs(title = "Community Population in 2020", x = "Longitude", y = "Latitude") +
+    theme_bw()
+
+# visualize a histogram of the mean population by site_name with x and y log scales
+ggplot(pop_melt_sf, aes(x = population)) +
+    geom_histogram(bins = 30) +
+    scale_x_log10() +
+    scale_y_log10() +
+    labs(title = "Histogram of Population Readings", x = "Population", y = "Count") +
+    theme_bw()
+
+glimpse(pop_sf)
+
+# check for any duplicates based on geometry
+dups <- pop_sf %>%
+    group_by(geometry) %>%
+    summarise(n = n()) %>%
+    filter(n > 1) # 0
+
+# total rows that contain a duplicate site_name
+sum(dups$n) # 0
+```
+
+## Convert Column Types
+```{r}
+# read in the data
+pop_melt_sf <- st_read("data/pop_africa/pop_melt.geojson")
+df <- pop_melt_sf
+glimpse(df)
+
+# drop site_name since it's not fully unique
+df <- df %>%
+    select(-site_name)
+
+# create a unique id for each site based on the geometry
+df$id <- as.integer(as.factor(as.character(df$geometry)))
+
+# change date_commissioned to year_commissioned
+df$year_commissioned <- year(df$date_commissioned)
+
+# rename year to year_pop
+df <- df %>%
+    rename(year_pop = year, year_commissioned = date_commissioned)
+
+glimpse(df)
+
+# export as RDS
+saveRDS(df, "data/pop_africa/pop_melt_sf.rds")
+```
+
+## Handle Outliers
+Import Data & Calculate Medians & IQRs by ID
+```{r}
+# reread in data
+pop_melt_sf <- readRDS("data/pop_africa/pop_melt_sf.rds")
+df <- pop_melt_sf
+
+# find the median for each id, put it into a new column
+df$median <- ave(df$population, df$id, FUN = median)
+# find the upper 75% quartile for each id, put it into a new column
+df$q3 <- ave(df$population, df$id, FUN = function(x) quantile(x, 0.75))
+# find the lower 25% quartile for each id, put it into a new column
+df$q1 <- ave(df$population, df$id, FUN = function(x) quantile(x, 0.25))
+# calculate the IQR for each id, put it into a new column
+df$IQR <- df$q3 - df$q1
+# calculate the top whisker for each id, put it into a new column
+df$top_whisker <- df$q3 + 1.5 * df$IQR
+# calculate the bottom whisker for each id, put it into a new column
+df$bottom_whisker <- df$q1 - 1.5 * df$IQR
+
+glimpse(df)
+# count the number of outliers in the data
+df %>%
+    st_drop_geometry() %>%
+    filter(population > top_whisker | population < bottom_whisker) %>%
+    count() ## 438 / 21k
+
+# convert any population that is above the top whisker to the top whisker
+df <- df %>%
+    mutate(population = ifelse(population > top_whisker, top_whisker, population))
+# convert any population that is below the bottom whisker to the bottom whisker
+df <- df %>%
+    mutate(population = ifelse(population < bottom_whisker, bottom_whisker, population))
+
+# drop the columns median, q1, q3, IQR, top_whisker, and bottom_whisker
+df <- df %>%
+    select(-median, -q1, -q3, -IQR, -top_whisker, -bottom_whisker)
+
+# export 
+saveRDS(df, "data/pop_africa/pop_melt_sf_clean.rds")
+```
+
+## Create Some Visualizations
+```{r}
+# read in the data
+df <- readRDS("data/pop_africa/pop_melt_sf_clean.rds")
+
+# plot the population by year by site_type
+ggplot(df, aes(x = year_pop, y = population, color = id)) +
+    geom_point() +
+    geom_smooth() + 
+    scale_y_log10() +
+    labs(title = "Population by Year by Site", x = "Year", y = "Population") +
+    theme_bw()
+
+# make a line plot of each site's population by year
+ggplot(df, aes(x = year_pop, y = population, group = id, color = id)) +
+    geom_line() +
+    labs(title = "Population by Year by Site", x = "Year", y = "Population") +
+    theme_bw()
+```
+
+## Data Requirements
+- There must be a unit-specific identifier variable that does not vary over time, integer format. Here that is id.
+- There must be a time variable. Here that is year_pop.
+- There must be a group variable, which is usually the period when an individual first becomes treated. For units that are never treated, this variable should be set to 0! Here that is year_commissioned.
+- The variables must be of numeric class.
+Note: this analysis can be run without control sites! Worth re-running on the CLUB-ER dataset. 
+
+## Prep Data for DinD
+```{r}
+# read in data
+df <- readRDS("data/pop_africa/pop_melt_sf_clean.rds")
+
+# pull out the earliest date
+start_year <- min(df$year_pop)
+end_year <- max(df$year_pop)
+
+# check for any NA values in any column
+df %>% st_drop_geometry() %>% summarise_all(~sum(is.na(.)))
+
+df$time_period <- df$year_pop - start_year + 1
+df$group <- df$year_commissioned - start_year + 1
+
+# plot histogram of group variable
+# set y max to 25
+ggplot(df, aes(x = group)) +
+    geom_histogram(binwidth = 1) +
+    xlim(-1, 25) +
+    labs(title = "Histogram of Group Variable", x = "Group", y = "Count") +
+    theme_bw()
+
+# export df to RDS
+saveRDS(df, "data/pop_africa/pop_melt_sf_clean_dind.rds")
+```
+
+## Run the DinD Analysis
+```{r}
+# read in the data
+df <- readRDS("data/pop_africa/pop_melt_sf_clean_dind.rds")
+
+# run the model
+# https://bcallaway11.github.io/did/reference/att_gt.html
+did_notyettreated <- att_gt(
+    yname = "population", # outcome variable
+    tname = "time_period", # time variable
+    idname = "id", # id variable
+    gname = "group", # first treatment period variable
+    data = df, # data
+    control_group = "notyettreated", # set the comparison group as either "never treated" or "not yet treated"
+)
+
+# aggregate the results
+did_notyettreated_agg <- aggte(
+    did_notyettreated,
+    type = "dynamic", 
+    na.rm = TRUE
+)
+# view the results
+summary(did_notyettreated_agg)
+
+# plot group-time ATTs
+did_notyettreated_agg_plt <- ggdid(did_notyettreated_agg) +
+    labs(title = "Group-Time ATTs using Not Yet Treated As Controls", x = "Years from Mini-Grid Commissioning", y = "ATT") +
+    theme_bw() + 
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+print(did_notyettreated_agg_plt)
+```
+Warnings while running model:
+Warning message:
+In att_gt(yname = "population", tname = "time_period", idname = "id",  :
+  Not returning pre-test Wald statistic due to singular covariance matrix
+
+## Results
+Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. <https://doi.org/10.1016/j.jeconom.2020.12.001>, <https://arxiv.org/abs/1803.09015> 
+
+Overall summary of ATT's based on event-study/dynamic aggregation:  
+      ATT    Std. Error     [ 95%  Conf. Int.]  
+ 400.3806      118.8584   167.4225    633.3387 *
+
+
+Dynamic Effects:
+ Event time  Estimate Std. Error [95% Simult.  Conf. Band]  
+        -18   68.7334   121.3114     -260.2182    397.6850  
+        -17  -33.4138    13.3435      -69.5963      2.7687  
+        -16  -24.8979     9.8465      -51.5981      1.8022  
+        -15   -7.2562    12.6575      -41.5788     27.0664  
+        -14  -40.7833     8.1061      -62.7640    -18.8027 *
+        -13    3.4890    11.4100      -27.4508     34.4287  
+        -12    1.7478    23.1963      -61.1520     64.6476  
+        -11  -25.4936    18.1921      -74.8240     23.8367  
+        -10    6.5079     8.3846      -16.2281     29.2440  
+         -9   -6.9297     8.1391      -28.9999     15.1404  
+         -8   -3.5855    11.4319      -34.5845     27.4135  
+         -7   -4.0129     8.6875      -27.5701     19.5443  
+         -6   -4.7055    15.8794      -47.7645     38.3535  
+         -5   30.6904    11.7120       -1.0682     62.4490  
+         -4    7.6804    21.2299      -49.8871     65.2480  
+         -3   -3.7052    11.5398      -34.9969     27.5866  
+         -2   10.3292    10.1298      -17.1392     37.7976  
+         -1   23.9232    14.9476      -16.6091     64.4555  
+          0   21.0137    11.0721       -9.0097     51.0372  
+          1   27.6184    15.6846      -14.9125     70.1493  
+          2   87.2916    29.0391        8.5483    166.0348 *
+          3  113.1311    41.4291        0.7907    225.4715 *
+          4  166.7177    67.2071      -15.5231    348.9585  
+          5  291.5636   128.5376      -56.9829    640.1101  
+          6  414.8476   137.6093       41.7021    787.9931 *
+          7  525.9467   233.1876     -106.3716   1158.2650  
+          8  610.0432   289.9620     -176.2263   1396.3128  
+          9  280.0738   243.8725     -381.2181    941.3656  
+         10  327.0172   290.1518     -459.7669   1113.8013  
+         11  226.6114   140.4785     -154.3143    607.5370  
+         12   65.7448   104.0048     -216.2778    347.7674  
+         13  183.6069   116.6348     -132.6636    499.8773  
+         14  340.1386   169.8078     -120.3172    800.5944  
+         15  685.3582   319.3128     -180.4998   1551.2161  
+         16  671.8122   340.0584     -250.3001   1593.9245  
+         17  939.2975   379.5789      -89.9798   1968.5748  
+         18 1629.3979   610.6105      -26.3516   3285.1474 
