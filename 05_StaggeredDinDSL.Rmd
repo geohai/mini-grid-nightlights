@@ -81,6 +81,44 @@ df <- read_csv("data/sl/nightlight_values_v2.csv")
 df <- df %>%
     filter(site_name != "Pepel")
 
+
+# check for duplicates in site_name
+dups <- df %>%
+    count(site_name) %>%
+    filter(n > 117)
+View(dups)
+# manually check to see if the nightlight values match up >> they do >> duplicated
+
+# drop the CBIL versions of the duplicated sites
+df <- df %>%
+    filter(!(site_name %in% dups$site_name & site_type == "CBIL"))
+
+# recheck for duplicates
+dups <- df %>%
+    count(site_name) %>%
+    filter(n > 117)
+View(dups)
+# this dropped 6/7 of the duplicated sites
+# there is one more that appears in the list of "Control" sites >> oops! Remove it too
+df <- df %>%
+    filter(!(site_name %in% dups$site_name & site_type == "Control"))
+
+# recheck for duplicates
+dups <- df %>%
+    count(site_name) %>%
+    filter(n > 117)
+View(dups)
+
+# all good now! Re-export the data
+write_csv(df, "data/sl/nightlight_values_v2_clean.csv")
+```
+
+## Handle Outliers
+
+```{r}
+# read in data
+df <- read_csv("data/sl/nightlight_values_v2_clean.csv")
+
 # calculate the mean value per site
 df <- df %>%
     group_by(site_name) %>%
@@ -127,7 +165,7 @@ ggplot(df, aes(x = image_value)) +
 # much better!
 
 # export df to csv
-write_csv(df, "data/sl/nightlight_values_v2_clean.csv")
+write_csv(df, "data/sl/nightlight_values_v2_clean_no_outliers.csv")
 ```
 
 ## Data Requirements
@@ -143,35 +181,6 @@ Note: this analysis can be run without control sites! Worth re-running on the CL
 df <- read_csv("data/sl/nightlight_values_v2_clean.csv")
 
 
-# check for duplicates in site_name
-dups <- df %>%
-    count(site_name) %>%
-    filter(n > 117)
-View(dups)
-# manually check to see if the nightlight values match up >> they do >> duplicated
-
-# drop the CBIL versions of the duplicated sites
-df <- df %>%
-    filter(!(site_name %in% dups$site_name & site_type == "CBIL"))
-
-# recheck for duplicates
-dups <- df %>%
-    count(site_name) %>%
-    filter(n > 117)
-View(dups)
-# this dropped 6/7 of the duplicated sites
-# there is one more that appears in the list of "Control" sites >> oops! Remove it too
-df <- df %>%
-    filter(!(site_name %in% dups$site_name & site_type == "Control"))
-
-# recheck for duplicates
-dups <- df %>%
-    count(site_name) %>%
-    filter(n > 117)
-View(dups)
-
-# all good now! Re-export the data
-write_csv(df, "data/sl/nightlight_values_v2_clean.csv")
 ```
 
 

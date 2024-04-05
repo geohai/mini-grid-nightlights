@@ -1,0 +1,41 @@
+Community,Region,District,Chiefdom,County/ Section,Latitude,Longitude,Digitised Buildings,Est Connections,geometry,site_type,site_name,date_commissioned
+Naiagolehun,Southern,Bo,Bagbo,Niagorehun,7.6836,-11.7673,613.0,307.0,POINT (-11.7673 7.6836),Control,Naiagolehun,2030-01-01
+Sembehun,Southern,Bo,Tikonko,Sendeh,7.7741,-11.7245,596.0,298.0,POINT (-11.7245 7.7741),Control,Sembehun,2030-01-01
+Yamoama,Southern,Bo,Lugbu,Kamba,7.6528,-11.8951,448.0,224.0,POINT (-11.8951 7.6528),Control,Yamoama,2030-01-01
+Mamboma,Southern,Bo,Bongor,Tongowa,7.8403,-11.6607,468.0,234.0,POINT (-11.6607 7.8403),Control,Mamboma,2030-01-01
+Patewoma,Southern,Bo,Lugbu,Yorma,7.7303,-11.8157,436.0,218.0,POINT (-11.8157 7.7303),Control,Patewoma,2030-01-01
+Gbundapi,Southern,Pujehun,Panga,Setti - Yakanday,7.3194,-11.8479,417.0,209.0,POINT (-11.8479 7.3194),Control,Gbundapi,2030-01-01
+Blama,Southern,Pujehun,Galliness,Mewah,7.3453,-11.6363,207.0,104.0,POINT (-11.6363 7.3453),Control,Blama,2030-01-01
+Yiraia,Northern,Falaba,Kamadu Yiraia,Yiraia,9.453,-11.2551,259.0,130.0,POINT (-11.2551 9.453),Control,Yiraia,2030-01-01
+Gberia Fotombu,Northern,Falaba,Sulima,Koindu-Kura,9.8773,-11.1638,338.0,169.0,POINT (-11.1638 9.8773),Control,Gberia Fotombu,2030-01-01
+Mandia,Northern,Koinadugu,Kamukeh,Taelia,9.9755,-11.851,267.0,134.0,POINT (-11.851 9.9755),Control,Mandia,2030-01-01
+Kania,Northern,Koinadugu,Diang,Kania,9.2126,-11.6088,272.0,136.0,POINT (-11.6088 9.2126),Control,Kania,2030-01-01
+Dankawali,Northern,Falaba,Kamadu Yiraia,Upper Kamadugu,9.631,-11.3295,212.0,106.0,POINT (-11.3295 9.631),Control,Dankawali,2030-01-01
+Gorahun,Eastern,Kailahun,Kpeje Bongre,Bongre,8.0787,-10.7953,255.0,128.0,POINT (-10.7953 8.0787),Control,Gorahun,2030-01-01
+Baiima,Eastern,Kailahun,Mandu,Gbongre,8.0318,-10.7673,529.0,265.0,POINT (-10.7673 8.0318),Control,Baiima,2030-01-01
+Foindu,Eastern,Kailahun,Kpeje Bongre,Marwei,8.1242,-10.7876,267.0,134.0,POINT (-10.7876 8.1242),Control,Foindu,2030-01-01
+Petema / Sebehun,Eastern,Kenema,Malegohun,Hulorhun Njagbudor,8.1956,-10.9254,590.0,295.0,POINT (-10.9254 8.1956),Control,Petema / Sebehun,2030-01-01
+Wilima,Eastern,Kenema,Lower Bambara,Fallay,8.1704,-10.9462,480.0,240.0,POINT (-10.9462 8.1704),Control,Wilima,2030-01-01
+Gba,Southern,Pujehun,Makpele,Samagbe,7.2741,-11.2306,497.0,249.0,POINT (-11.2306 7.2741),Control,Gba,2030-01-01
+Mende,Eastern,Kailahun,Luawa,Mende Buima,8.1995,-10.6932,317.0,159.0,POINT (-10.6932 8.1995),Control,Mende,2030-01-01
+Giehun,Eastern,Kailahun,Luawa,Giehun,8.202,-10.6467,606.0,303.0,POINT (-10.6467 8.202),Control,Giehun,2030-01-01
+Gbalahun (Balahun),Eastern,Kailahun,Luawa,Gbela,8.2565,-10.4875,422.0,211.0,POINT (-10.4875 8.2565),Control,Gbalahun (Balahun),2030-01-01
+Konjo,Eastern,Kailahun,Luawa,Upper Kpombali,8.2013,-10.437,247.0,124.0,POINT (-10.437 8.2013),Control,Konjo,2030-01-01
+Bewabu,Eastern,Kailahun,Luawa,Gao,8.1243,-10.5654,430.0,215.0,POINT (-10.5654 8.1243),Control,Bewabu,2030-01-01
+Baiwala,Eastern,Kailahun,Dea,Baiwalla,7.9945,-10.6479,470.0,235.0,POINT (-10.6479 7.9945),Control,Baiwala,2030-01-01
+Rokel,North Western,Kambia,Mambolo,Matetie,8.8994,-13.0619,317.0,159.0,POINT (-13.0619 8.8994),Control,Rokel,2030-01-01
+Gbonkomaria,North Western,Kambia,Magbema,Kargbulor,8.9519,-12.9716,311.0,156.0,POINT (-12.9716 8.9519),Control,Gbonkomaria,2030-01-01
+Kasiri,North Western,Kambia,Samu,Kassiri,8.94,-13.114,546.0,273.0,POINT (-13.114 8.94),Control,Kasiri,2030-01-01
+Matisaw / Buraia,North Western,Kambia,Samu,Mafufuneh,9.0025,-13.0744,347.0,174.0,POINT (-13.0744 9.0025),Control,Matisaw / Buraia,2030-01-01
+Magbema,North Western,Kambia,Magbema,Robat,9.0386,-12.9087,3418.0,1709.0,POINT (-12.9087 9.0386),Control,Magbema,2030-01-01
+Makonto,North Western,Port Loko,Kamasondo,Mannah,8.7045,-12.9711,435.0,218.0,POINT (-12.9711 8.7045),Control,Makonto,2030-01-01
+Maiogbo / Kwabana,North Western,Port Loko,Lokomasama,Gbainty,8.7781,-13.1351,437.0,219.0,POINT (-13.1351 8.7781),Control,Maiogbo / Kwabana,2030-01-01
+Gbenti,North Western,Port Loko,Lokomasama,Gbainty,8.8006,-13.1119,355.0,178.0,POINT (-13.1119 8.8006),Control,Gbenti,2030-01-01
+Pepel,North Western,Port Loko,Kamasondo,Kamasondo,8.5893,-13.0571,1313.0,657.0,POINT (-13.0571 8.5893),Control,Pepel,2030-01-01
+Tumbu (Kambia),North Western,Kambia,Mambolo,Tombo-Wallah,8.8547,-13.1248,476.0,238.0,POINT (-13.1248 8.8547),Control,Tumbu (Kambia),2030-01-01
+Barma,Eastern,Kenema,Wandor,Kemoh,8.3528,-11.332,402.0,201.0,POINT (-11.332 8.3528),Control,Barma,2030-01-01
+Mondema,Eastern,Kenema,Gorama Mende,Biatong,8.4736,-11.4359,480.0,240.0,POINT (-11.4359 8.4736),Control,Mondema,2030-01-01
+Mokanji,Southern,Moyamba,Lower Banta,Mokotawa,7.9006,-12.1949,545.0,273.0,POINT (-12.1949 7.9006),Control,Mokanji,2030-01-01
+Mamaka,Northern,Tonkolili,Yoni Mamaila,Mamaka,8.5178,-12.2867,255.0,128.0,POINT (-12.2867 8.5178),Control,Mamaka,2030-01-01
+Roten,Northern,Tonkolili,Yoni Mamaila,Gaindema,8.3973,-12.1796,335.0,168.0,POINT (-12.1796 8.3973),Control,Roten,2030-01-01
+Tumbu (W. Area),Western,W. Area Rural,York Rural,Sattia/Tombo,8.2123,-13.1058,3250.0,1625.0,POINT (-13.1058 8.2123),Control,Tumbu (W. Area),2030-01-01
