@@ -456,3 +456,126 @@ did_control_agg_plt <- ggdid(did_control_agg) +
 
 print(did_control_agg_plt)
 ```
+
+## Rerun Using Not Yet Treated as Control
+```{r}
+# read in the data
+africa_df_melt_clean_for_csdind <- readRDS("./data/dark_africa/africa_df_melt_clean_for_csdind.rds")
+df <- africa_df_melt_clean_for_csdind
+
+# filter for just mini-grid sites
+df <- df %>%
+    filter(type == "minigrid")
+
+# run the model
+# https://bcallaway11.github.io/did/reference/att_gt.html
+did_nyt <- att_gt(
+    yname = "image_value", # outcome variable
+    tname = "time_period", # time variable
+    idname = "id", # id variable
+    gname = "group", # first treatment period variable
+    data = df, # data
+    control_group = "notyettreated", # set the comparison group as either "never treated" or "not yet treated"
+)
+
+# export the model results
+saveRDS(did_nyt, "./data/dark_africa/did_nyt_minigrid.rds")
+
+# aggregate the results
+did_nyt_agg <- aggte(
+    did_nyt,
+    type = "dynamic", 
+    na.rm = TRUE
+)
+
+# export the results
+saveRDS(did_nyt_agg, "./data/dark_africa/did_nyt_agg_minigrid.rds")
+
+# view the results
+summary(did_nyt_agg)
+
+# plot group-time ATTs
+did_nyt_agg_plt <- ggdid(did_nyt_agg) +
+    labs(title = "Group-Time ATTs for Mini-Grid Sites vs Not Yet Treated Sites", x = "Time Period", y = "ATT") +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+print(did_nyt_agg_plt)
+```
+
+## Compile a Table of the Aggregated Results
+```{r}
+# read in the data
+did_control_agg_minigrid_ocean <- readRDS("./data/dark_africa/did_control_agg_minigrid_ocean.rds")
+did_control_agg_minigrid_desert <- readRDS("./data/dark_africa/did_control_agg_minigrid_desert.rds")
+did_control_agg_minigrid_jungle <- readRDS("./data/dark_africa/did_control_agg_minigrid_jungle.rds")
+did_control_agg_minigrid_rural <- readRDS("./data/dark_africa/did_control_agg_minigrid_rural.rds")
+did_control_agg_minigrid_built <- readRDS("./data/dark_africa/did_control_agg_minigrid_built.rds")
+did_nyt_agg_minigrid <- readRDS("./data/dark_africa/did_nyt_agg_minigrid.rds")
+
+# print out summaries of each
+summary(did_control_agg_minigrid_ocean)
+summary(did_control_agg_minigrid_desert)
+summary(did_control_agg_minigrid_jungle)
+summary(did_control_agg_minigrid_rural)
+summary(did_control_agg_minigrid_built)
+summary(did_nyt_agg_minigrid)
+
+# recreate the plots for each of these
+did_control_agg_plt_minigrid_ocean <- ggdid(did_control_agg_minigrid_ocean, xgap = 6) +
+    labs(title = "Group-Time ATTs for Mini-Grid Sites vs Ocean Sites", x = "Time Period in Months", y = "ATT") +
+    theme_bw() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+did_control_agg_plt_minigrid_desert <- ggdid(did_control_agg_minigrid_desert, xgap = 6) +
+    labs(title = "Group-Time ATTs for Mini-Grid Sites vs Desert Sites", x = "Time Period in Months", y = "ATT") +
+    theme_bw() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))  
+
+did_control_agg_plt_minigrid_jungle <- ggdid(did_control_agg_minigrid_jungle, xgap = 6) +
+    labs(title = "Group-Time ATTs for Mini-Grid Sites vs Rainforest Sites", x = "Time Period in Months", y = "ATT") +
+    theme_bw() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+did_control_agg_plt_minigrid_rural <- ggdid(did_control_agg_minigrid_rural, xgap = 6) +
+    labs(title = "Group-Time ATTs for Mini-Grid Sites vs Rural Sites", x = "Time Period in Months", y = "ATT") +
+    theme_bw() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+did_control_agg_plt_minigrid_built <- ggdid(did_control_agg_minigrid_built, xgap = 6) +
+    labs(title = "Group-Time ATTs for Mini-Grid Sites vs Built Sites", x = "Time Period in Months", y = "ATT") +
+    theme_bw() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+did_nyt_agg_plt_minigrid <- ggdid(did_nyt_agg_minigrid, xgap = 6) +
+    labs(title = "Group-Time ATTs for Mini-Grid Sites vs Not Yet Treated Sites", x = "Time Period in Months", y = "ATT") +
+    theme_bw() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+
+# show them all
+print(did_control_agg_plt_minigrid_ocean)
+print(did_control_agg_plt_minigrid_desert)
+print(did_control_agg_plt_minigrid_jungle)
+print(did_control_agg_plt_minigrid_rural)
+print(did_control_agg_plt_minigrid_built)
+print(did_nyt_agg_plt_minigrid)
+```
+
+## Results
+### Mini-Grid vs Ocean
+     ATT    Std. Error     [ 95%  Conf. Int.] 
+ -0.0129        0.0175    -0.0473      0.0215 
+
+### Mini-Grid vs Desert
+   ATT    Std. Error     [ 95%  Conf. Int.] 
+ 0.034        0.0188    -0.0029       0.071 
+
+### Mini-Grid vs Jungle
+    ATT    Std. Error     [ 95%  Conf. Int.] 
+ 0.0232         0.018     -0.012      0.0584 
+
+### Mini-Grid vs Rural
+    ATT    Std. Error     [ 95%  Conf. Int.] 
+ 0.0421        0.0263    -0.0095      0.0937 
+
+### Mini-Grid vs Built
+    ATT    Std. Error     [ 95%  Conf. Int.]  
+ -0.8998        0.1225      -1.14     -0.6596 *
+
+### Mini-Grid vs Not Yet Treated
+    ATT    Std. Error     [ 95%  Conf. Int.]
+-0.0573        0.0741    -0.2026       0.088 

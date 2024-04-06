@@ -293,7 +293,7 @@ df <- df %>%
 ggplot(df, aes(x = group)) +
     geom_histogram(binwidth = 1) +
     xlim(-5, 120) +
-    scale_y_log10() +
+    # scale_y_log10() +
     labs(title = "Histogram of Group Variable", x = "Group", y = "log10(Count)") +
     theme_bw()
 
@@ -312,7 +312,7 @@ df$id <- as.integer(df$id)
 
 # keep just certain groups
 df <- df %>%
-    filter(type == "mini-grid" | type == "ocean")
+    filter(type == "mini-grid" | type == "control")
 
 # run the model
 # https://bcallaway11.github.io/did/reference/att_gt.html
@@ -338,7 +338,7 @@ did_control_agg <- aggte(
 summary(did_control_agg)
 
 # plot group-time ATTs
-did_control_agg_plt <- ggdid(did_control_agg) +
+did_control_agg_plt <- ggdid(did_control_agg, xgap = 6) +
     labs(title = "Group-Time ATTs for Sierra Leone Mini-Grid Sites vs Control Villages", x = "Time Period", y = "ATT") +
     theme_bw() +
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
@@ -379,7 +379,7 @@ did_notyettreated_agg <- aggte(
 summary(did_notyettreated_agg)
 
 # plot group-time ATTs
-did_notyettreated_agg_plt <- ggdid(did_notyettreated_agg) +
+did_notyettreated_agg_plt <- ggdid(did_notyettreated_agg, xgap = 6) +
     labs(title = "Group-Time ATTs for Sierra Leone Mini-Grid Sites vs Not Yet Treated Sites", x = "Time Period", y = "ATT") +
     theme_bw() +
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
