@@ -328,3 +328,39 @@ glimpse(mgs)
 # save mgs
 st_write(mgs, "data/oemap/mgs_buffer_results.geojson")
 ```
+
+## Look at the results
+```{r}
+mgs <- st_read("data/oemap/mgs_buffer_results.geojson")
+# filter out the NAs
+mgs <- mgs %>% filter(!is.na(mean))
+
+# plot the distribution of mean elec.access with density, fill by country
+ggplot(mgs) +
+  geom_density(aes(x = mean, fill = country), alpha = 0.5) +
+  ggtitle("Density Plot of Mean Electricity Access Probability by Mini-Grid Site") +
+  theme_bw()
+
+# density plot of mean, fill by date_commissioned
+ggplot(mgs) +
+  geom_density(aes(x = mean, fill = date_commissioned), alpha = 0.5) +
+  ggtitle("Density Plot of Mean Electricity Access Probability by Mini-Grid Site Commission Date") +
+  theme_bw()
+
+# plot box and whisker plot of mean
+ggplot(mgs) +
+  geom_boxplot(aes(y = mean)) +
+  ggtitle("Boxplot of Mean Electricity Access Probability by Mini-Grid Site") +
+  theme_bw()
+
+# plot date_commissioned on the x versus mean on the y
+ggplot(mgs) +
+  geom_point(aes(x = date_commissioned, y = mean)) +
+  ggtitle("Electricity Access Probability by Mini-Grid Site Commission Date") +
+  theme_bw()
+
+# plot histogram of mean
+ggplot(mgs) +
+  geom_histogram(aes(x = mean), binwidth = 5) +
+  ggtitle("Histogram of Mean Electricity Access Probability by Mini-Grid Site") +
+  theme_bw()
