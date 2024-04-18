@@ -142,3 +142,6 @@ data/dark_sl/
 data/gee/
 data/sl_pop/
 data/pop_cbil/
+data/oemap/grid_cells_zip/
+data/oemap/grid_cells_geojson/
+data/oemap/oedata.geojson

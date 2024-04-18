@@ -235,7 +235,7 @@ values_by_type_plot <- df %>%
     filter(type != "built") %>%
     ggplot(aes(x = image_date, y = image_value, color = type)) +
     geom_smooth() +
-    labs(title = "Nighttime Brightenss Values Over Time by Site Type", x = "Image Date", y = "Nighttime Brightness") +
+    labs(title = "Nighttime Brightness Values Over Time by Site Type", x = "Image Date", y = "Nighttime Brightness") +
     theme_bw()
 ggsave("figures/dark_sl/values_by_type_plot_hi_res.png", values_by_type_plot, width = 12, height = 6, units = "in", dpi = 900)
 
@@ -338,7 +338,7 @@ summary(did_control_agg)
 
 # plot group-time ATTs
 did_control_agg_plt <- ggdid(did_control_agg, xgap = 6) +
-    labs(title = "Average Effect of Mini-Grid Construction on Nighttime Brightess for Sierra Leone Mini-Grid Sites", x = "Months Since Commissioning", y = "Change in Brightness") +
+    labs(title = "Average Effect of Mini-Grid Construction on Nighttime Brightness for Sierra Leone Mini-Grid Sites", x = "Months Since Commissioning", y = "Change in Brightness") +
     theme_bw() +
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 

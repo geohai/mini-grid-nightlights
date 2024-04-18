@@ -1,0 +1,330 @@
+## Compare Mini-Grid Site Locations to Current Energy Access Maps
+
+```{r}
+library(tidyverse)
+library(sf)
+```
+
+```{r}
+# Load the mini-grid site locations from each developer
+
+# cbil
+cbil <- st_read("data/cbil/cbil_sites.geojson")
+pg <- st_read("data/pg/pg_sites.geojson")
+cluber <- st_read("data/cluber/cluber_sites.geojson")
+
+# add source column to each
+cbil <- cbil %>% mutate(source = "cbil", site_name = site)
+pg <- pg %>% mutate(source = "pg")
+cluber <- cluber %>% mutate(source = "cluber")
+
+# clean up cbil df
+cbil <- cbil %>% mutate(date_commissioned = as.Date(metadataprojectcod, format = "%Y-%m-%d"))
+cbil <- cbil %>% select(site_name, country, date_commissioned, source, geometry)
+glimpse(cbil)
+
+# clean up pg df
+glimpse(pg)
+pg <- pg %>% select(site_name, country, date_commissioned, source, geometry)
+
+# clean up cluber df
+glimpse(cluber)
+cluber <- cluber %>% select(site_name, country, date_commissioned, source, geometry)
+
+# combine
+mgs <- bind_rows(cbil, pg, cluber)
+rm(cbil, pg, cluber)
+
+# export
+st_write(mgs, "data/mgs/mgs.geojson")
+```
+
+## Filter Mini-Grid Sites by Country
+```{r}
+# read in mgs
+mgs <- st_read("data/mgs/mgs.geojson")
+# countries of interest
+iea <- c("Ghana", "Senegal", "Uganda")
+
+# show unique list of countries from mgs
+unique(mgs$country)
+
+# [1] "Kenya"        "Sierra Leone" "DR Congo"     "Nigeria"      "Tanzania"    
+#  [6] "Haiti"        "Zambia"       NA             "Ghana"        "Mozambique"  
+# [11] "Benin"        "Angola"       "Burkina Faso" "Cameroon"     "Ethiopia"    
+# [16] "Liberia"      "Madagascar"   "Mali"         "Mauritania"   "Senegal"     
+# [21] "Togo"         "Uganda"       "Zimbabwe"    
+
+# filter mgs by countries of interest
+mgs <- mgs %>% filter(country %in% iea)
+rm(iea)
+# keeps 117 sites
+# count number of mgs per developer
+mgs %>% count(source)
+# 4 from cbil, 113 from cluber
+# count number per country
+mgs %>% count(country)
+# 6 for Ghana, 109 for Senegal, 2 for Uganda
+
+# map where remaining sites are
+ggplot(mgs) +
+  geom_sf(aes(color = country)) +
+  theme_minimal()
+
+# export 
+st_write(mgs, "data/oemap/mgs_iea_117.geojson")
+```
+
+## Find Mini-grids Close Togehter
+```{r}
+# find mini-grids that are close together
+mgs <- st_read("data/mgs/mgs_iea_117.geojson")
+
+# tell me which sites are close together
+mgs_close <- st_join(mgs, mgs, join = st_is_within_distance, dist = 10000)
+# filter out pairs that are the same
+mgs_close <- mgs_close %>% filter(site_name.x != site_name.y)
+
+# convert site_name to factor
+mgs_close$site_name.x <- as.factor(mgs_close$site_name.x)
+mgs_close$site_name.y <- as.factor(mgs_close$site_name.y)
+
+# find the site_name.x with 3 most frequent site_name.y
+mg_popular <- mgs_close %>% count(site_name.x) %>% arrange(desc(n)) %>% head(10)
+
+# get the coordinates of the most popular site
+mgs_close %>% filter(site_name.x == mg_popular$site_name.x[1]) %>% select(site_name.x, site_name.y, country.x, country.y) %>% head(10)
+```
+
+## Import OE Map Data
+```{r}
+grid_cells <- st_read("data/oemap/grid_cells.geojson")
+mgs <- st_read("data/oemap/mgs_iea_117.geojson")
+
+# visualize the gridcells
+ggplot(grid_cells) +
+  geom_sf() +
+  theme_minimal()
+
+# Clean geometries
+grid_cells <- st_make_valid(grid_cells)
+mgs <- st_make_valid(mgs)
+
+# filter the grid cells for just the ones that contain a mini-grid site within them
+grid_cells_mgs <- st_join(grid_cells, mgs, join = st_contains)
+
+# filter just the ones that have a mini-grid site within them
+grid_cells_mgs <- grid_cells_mgs %>% filter(!is.na(site_name))
+
+# export
+st_write(grid_cells_mgs, "data/oemap/grid_cells_mgs.geojson")
+```
+
+## Clean Up the Download Links
+```{r}
+# read in grid cells with mini-grid sites
+download_links <- read_csv("data/oemap/download_links.csv")
+
+# format for link
+# Working: https://biospheric-vector.s3.amazonaws.com/open-energy-maps/2024Q1-downloads-2/20240326-2/SEN/435853_geoms.zip
+# Broken: https://biospheric-vector.s3.amazonaws.com/open-energy-maps/2024Q1-downloads/20240326/GHA/471928_geoms.geojson
+
+# replace .geojson with .zip at the end of each cell in the column download_link
+download_links$download_link <- gsub(".geojson", ".zip", download_links$download_link)
+
+# replace 2024Q1-downloads with 2024Q1-downloads-2 in the download_link column
+download_links$download_link <- gsub("2024Q1-downloads", "2024Q1-downloads-2", download_links$download_link)
+
+# replace /20240326/ with /20240326-2/ in the download_link column
+download_links$download_link <- gsub("/20240326/", "/20240326-2/", download_links$download_link)
+
+# reexport the download_links
+write_csv(download_links, "data/oemap/download_links_fix.csv")
+```
+
+## Download the Data
+```{r}
+# read in the mg grid cells
+grid_cells_mgs <- st_read("data/oemap/grid_cells_mgs.geojson")
+# read in the download links
+download_links <- read_csv("data/oemap/download_links_fix.csv")
+
+# filter download links for just the grid cells with mini-grid sites
+download_links <- download_links %>% filter(grid_cell_id %in% grid_cells_mgs$grid_cell_id)
+
+
+# loop over the download links and download the data
+for (i in 1:nrow(download_links)) {
+  download.file(download_links$download_link[i], paste0("data/oemap/grid_cells_zip/", download_links$grid_cell_id[i], ".zip"))
+}
+
+
+# print the first row second column of download_links, don't cut it off
+print(download_links$download_link[1], width = 1000)
+```
+
+## Unzip the Data
+```{r}
+# unzip all the files
+files <- list.files("data/oemap/grid_cells_zip", full.names = TRUE)
+lapply(files, unzip, exdir = "data/oemap/grid_cells_geojson")
+
+# manually delete the license file
+```
+
+## Read in and Combine the OE GeoJSON files
+```{r}
+# read in the geojson files from oe into a single sf
+files <- list.files("data/oemap/grid_cells_geojson", full.names = TRUE)
+
+# read in the first file
+# oedata <- st_read(files[1])
+
+# loop over the rest of the files and bind them to the first file
+# for (i in 2:length(files)) {
+#   oedata <- bind_rows(oedata, st_read(files[i]))
+# }
+
+# redo this with lapply
+oedata_list <- lapply(files, st_read)
+oedata2 <- do.call(rbind, oedata_list)
+
+rm(files)
+# set crs to 4326
+st_crs(oedata) <- 4326
+
+# export as a single geojson
+st_write(oedata, "data/oemap/oedata.geojson")
+```
+
+## Do Mini-Grid Analysis
+```{r}
+library(terra)
+
+# read in the mini-grid data
+mgs <- vect("data/oemap/mgs_iea_117.geojson")
+oe <- vect("data/oemap/oedata.geojson")
+
+# count the number of features in oe that lie within each feature of mgs
+oe_mgs <- vect(oe, mgs, count = TRUE)
+
+```
+
+## Loop Over Individual Grid Cells to Find Mini-Grid Stats
+```{r}
+library(sf)
+library(tidyverse)
+
+# read in the grid cells mgs
+mgs <- st_read("data/oemap/mgs_iea_117.geojson")
+mgs_grid_cells <- st_read("data/oemap/grid_cells_mgs.geojson")
+# convert mgs_grid_cells to df
+mgs_grid_cells <- st_drop_geometry(mgs_grid_cells)
+mgs_grid_cells <- mgs_grid_cells %>% select(site_name, grid_cell_id)
+
+# for each mini-grid in mgs pull in the grid_cell_id from mgs_grid_cells matching by site_name
+mgs <- mgs %>% left_join(mgs_grid_cells, by = "site_name")
+rm(mgs_grid_cells)
+# clean the geometries
+mgs <- st_make_valid(mgs)
+
+# convert geometry from a point to 1km buffer
+mgs <- mgs %>% st_buffer(1000)
+
+# export the mini-grid sites with the buffer
+st_write(mgs, "data/oemap/mgs_buffer.geojson")
+
+# read back in mg
+mgs <- st_read("data/oemap/mgs_buffer.geojson")
+
+# for the first minigrid site, pull out the grid cell id
+grid_cell_id <- mgs$grid_cell_id[1]
+
+# create fileanme in format data/oemap/grid_cells_geojson/425749_geoms.geojson
+filename <- paste0("data/oemap/grid_cells_geojson/", grid_cell_id, "_geoms.geojson")
+
+# read in the file
+grid_cell <- st_read(filename)
+
+# clean the geometries
+# grid_cell <- st_make_valid(grid_cell)
+
+# grab just the features from grid_cell that intersect with the first mini-grid site
+inter <- st_intersection(grid_cell, mgs[1, ])
+
+# calculate the mean of elec.access....
+mean(inter$elec.access....)
+nrow(inter)
+sd(inter$elec.access....)
+# plot inter with geom_sf
+# color by elec.access....
+ggplot(inter) +
+  geom_sf(aes(fill = elec.access....)) +
+  # add title
+  ggtitle("Electricity Access Probability by Building at a Mini-Grid Site") +
+  theme_bw()
+
+# # plot grid_cell with geom_sf
+# ggplot(grid_cell) +
+#   geom_sf() +
+#   theme_minimal()
+```
+
+## Loop Over All Mini-Grid Sites
+```{r}
+# read in the mini-grid sites
+mgs <- st_read("data/oemap/mgs_buffer.geojson")
+# filter out nas
+mgs <- mgs %>% filter(!is.na(grid_cell_id))
+
+# convert to list for lapply
+mgs_list <- lapply(1:nrow(mgs), function(i) mgs[i, , drop = FALSE])
+
+# Define the function
+process_minigrid_site <- function(mg_feature) {
+    print(paste0("Now processing: ", mg_feature$site_name))
+    # Extract grid_cell_id from the current mini-grid site feature
+    grid_cell_id <- mg_feature$grid_cell_id
+    
+    # Create filename in the specified format
+    filename <- paste0("data/oemap/grid_cells_geojson/", grid_cell_id, "_geoms.geojson")
+    
+    # Read in the corresponding grid cell file
+    grid_cell <- st_read(filename)
+    
+    # Clean the geometries
+    grid_cell <- st_make_valid(grid_cell)
+    
+    # Grab just the features from grid_cell that intersect with the current mini-grid site
+    inter <- st_intersection(grid_cell, mg_feature)
+    
+    # Calculate the mean, count, and standard deviation of elec.access
+    # Replace 'elec.access' with the correct column name if different
+    mean_elec_access <- mean(inter$elec.access...., na.rm = TRUE)
+    count_elec_access <- nrow(inter)
+    sd_elec_access <- sd(inter$elec.access...., na.rm = TRUE)
+    
+    # Return a list containing the results
+    return(list(mean = mean_elec_access, count = count_elec_access, sd = sd_elec_access))
+}
+
+# Example usage with lapply (assuming 'mgs' is already read and available)
+# Note: mgs should be a list of sf features. If mgs is an sf object, convert it to a list of features.
+# This can be done using something like `lapply(1:nrow(mgs), function(i) mgs[i,])`
+results <- lapply(mgs_list, process_minigrid_site)
+
+# convert results to a data frame
+results <- do.call(rbind, results)
+
+# add results to mgs
+mgs <- cbind(mgs, results)
+
+# convert mean, count, and sd to numeric from list columns
+mgs$mean <- as.numeric(mgs$mean)
+mgs$count <- as.numeric(mgs$count)
+mgs$sd <- as.numeric(mgs$sd)
+
+glimpse(mgs)
+# save mgs
+st_write(mgs, "data/oemap/mgs_buffer_results.geojson")
+```
