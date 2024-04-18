@@ -341,10 +341,13 @@ ggplot(mgs) +
   ggtitle("Density Plot of Mean Electricity Access Probability by Mini-Grid Site") +
   theme_bw()
 
-# density plot of mean, fill by date_commissioned
+# density plot of mean, fill with darkgreen
 ggplot(mgs) +
-  geom_density(aes(x = mean, fill = date_commissioned), alpha = 0.5) +
-  ggtitle("Density Plot of Mean Electricity Access Probability by Mini-Grid Site Commission Date") +
+  geom_density(aes(x = mean), fill = "darkgreen", alpha = 0.5) +
+  ggtitle("Density Plot of Mean Electricity Access Probability by Mini-Grid Site") +
+  # change x axis label and y axis label
+  xlab("Mean Electricity Access Probability of Mini-Grid Sites") +
+  ylab("Density") +
   theme_bw()
 
 # plot box and whisker plot of mean
@@ -364,3 +367,18 @@ ggplot(mgs) +
   geom_histogram(aes(x = mean), binwidth = 5) +
   ggtitle("Histogram of Mean Electricity Access Probability by Mini-Grid Site") +
   theme_bw()
+
+# plot histogram of commissioning dates
+ggplot(mgs) +
+  geom_histogram(aes(x = date_commissioned), binwidth = 365) +
+  ggtitle("Histogram of Mini-Grid Site Commission Dates") +
+  theme_bw()
+
+# macro stats
+summary(mgs$mean)
+nrow(mgs)
+
+# count the number of sites with < 50% mean
+mgs %>% filter(mean < 50) %>% count()
+```
+
