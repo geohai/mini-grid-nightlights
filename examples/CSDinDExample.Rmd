@@ -11,9 +11,9 @@ library(lubridate)
 
 ## Set Global variables
 ```{r}
-original_file_name <- "/Users/ilyonsg/Documents/research/thesis/CB_Lab_Mapping_Economic_Migration/data/sl/nightlight_values_for_csdind.csv"
-clean_monthly_file_name <- "/Users/ilyonsg/Documents/research/thesis/CB_Lab_Mapping_Economic_Migration/data/sl/nightlight_values_for_csdind_nonames.csv"
-clean_yearly_file_name <- "/Users/ilyonsg/Documents/research/thesis/CB_Lab_Mapping_Economic_Migration/data/sl/nightlight_values_for_csdind_years.csv"
+original_file_name <- "/Users/ilyonsg/Documents/research/thesis/CB_Lab_Mapping_Economic_Migration/data/dark_sl/all_df_for_csdind.csv"
+clean_monthly_file_name <- "/Users/ilyonsg/Documents/research/thesis/CB_Lab_Mapping_Economic_Migration/data/dark_sl/all_df_for_csdind_nonames_monthly.csv"
+clean_yearly_file_name <- "/Users/ilyonsg/Documents/research/thesis/CB_Lab_Mapping_Economic_Migration/data/dark_sl/all_df_for_csdind_nonames_yearly.csv"
 ```
 
 ## Clean up the Existing DF
@@ -26,18 +26,12 @@ Only need to run once to generate the data for the example.
 # # drop the site_name and extra image stats column
 # df <- df %>%
 #     select(
-#         -site_name, 
-#         -mean_image_value, 
-#         -min_image_value, 
-#         -max_image_value,
-#         -year_commissioned,
-#         -year_image,
-#         -month_image,
-#         -month_commissioned
+#         -...1,
+#         -site_name
 #     )
 
-# # convert the site_types not equal to "Control" to "Mini-grid"
-# df$site_type[df$site_type != "Control"] <- "Mini-grid"
+# unique(df$type)
+# # "rural"     "built"     "ocean"     "control"   "mini-grid"
 
 # # rewrite the df to a csv
 # write_csv(df, clean_monthly_file_name)
@@ -47,17 +41,17 @@ Only need to run once to generate the data for the example.
 ```{r}
 # read in the data
 df <- read_csv(clean_monthly_file_name)
-
+glimpse(df)
 # convert certain columns to factors
-df$site_type <- as.factor(df$site_type)
-df$site_id <- as.factor(df$site_id)
+df$type <- as.factor(df$type)
+df$id <- as.factor(df$id)
 
 # view data
 glimpse(df)
 
-# visualize the image_value over time with image_date by grouped by site_type
+# visualize the image_value over time with image_date by grouped by type
 df %>%
-    ggplot(aes(x = image_date, y = image_value, color = site_type)) +
+    ggplot(aes(x = image_date, y = image_value, color = type)) +
     geom_point() +
     geom_smooth() +
     labs(title = "Image Value Over Time by Site Type in Sierra Leone", x = "Image Date", y = "Image Value") +
@@ -69,13 +63,18 @@ df %>%
 # read in the data
 df <- read_csv(clean_monthly_file_name)
 
+# keep just two site types
+# possible values: "rural", "built", "ocean", "control", "mini-grid"
+df <- df %>%
+    filter(type %in% c("mini-grid", "control"))
+
 # run the model
 # note these take about 30 seconds to run
 # https://bcallaway11.github.io/did/reference/att_gt.html
 did_control <- att_gt(
     yname = "image_value", # outcome variable
     tname = "time_period", # time variable
-    idname = "site_id", # id variable
+    idname = "id", # id variable
     gname = "group", # first treatment period variable
     data = df, # data
     control_group = "nevertreated", # set the comparison group as either "never treated" or "not yet treated"
@@ -84,7 +83,7 @@ did_control <- att_gt(
 did_notyettreated <- att_gt(
     yname = "image_value", # outcome variable
     tname = "time_period", # time variable
-    idname = "site_id", # id variable
+    idname = "id", # id variable
     gname = "group", # first treatment period variable
     data = df, # data
     control_group = "notyettreated", # set the comparison group as either "never treated" or "not yet treated"
@@ -112,17 +111,30 @@ summary(did_control_agg)
 summary(did_notyettreated_agg)
 
 # plot group-time ATTs
-did_control_agg_plt <- ggdid(did_control_agg) +
-    labs(title = "Group-Time ATTs for Control Group", x = "Time Period", y = "ATT") +
-    theme_bw() +
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+did_control_agg_plt <- ggdid(did_control_agg, xgap = 6) +
+    labs(
+        title = "Average Treatment Effect (ATT) of Mini-Grid Construction on Nighttime Brightness for Sierra Leone Mini-Grid Sites", 
+        x = "Months Since Commissioning",
+        y = "Change in Brightness"
+    ) +
+    theme(
+        text = element_text(size = 14),
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)
+    ) +
+    theme_bw()
+print(did_control_agg_plt)
 
 did_notyettreated_agg_plt <- ggdid(did_notyettreated_agg) +
-    labs(title = "Group-Time ATTs for Not Yet Treated Group", x = "Time Period", y = "ATT") +
-    theme_bw() + 
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
-
-print(did_control_agg_plt)
+    labs(
+        title = "Average Treatment Effect (ATT) of Mini-Grid Construction on Nighttime Brightness for Sierra Leone Mini-Grid Sites", 
+        x = "Months Since Commissioning",
+        y = "Change in Brightness"
+    ) +
+    theme(
+        text = element_text(size = 14),
+        axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)
+    ) +
+    theme_bw()
 print(did_notyettreated_agg_plt)
 ```
 
@@ -131,12 +143,12 @@ print(did_notyettreated_agg_plt)
 ### Control Group
 Overall summary of ATT's based on event-study/dynamic aggregation:  
      ATT    Std. Error     [ 95%  Conf. Int.] 
- -0.0672        0.0514    -0.1679      0.0334 
+  0.0186        0.0136    -0.0081      0.0453
 
 ### Not Yet Treated Group
 Overall summary of ATT's based on event-study/dynamic aggregation:  
      ATT    Std. Error     [ 95%  Conf. Int.] 
- -0.0681        0.0515    -0.1691      0.0328 
+   0.018        0.0142    -0.0098      0.0458
 
 ## Aggregate Data into Yearly Periods instead of Monthly Periods
 ```{r}
@@ -144,8 +156,8 @@ Overall summary of ATT's based on event-study/dynamic aggregation:
 df <- read_csv(clean_monthly_file_name)
 
 # convert certain columns to factors
-df$site_type <- as.factor(df$site_type)
-df$site_id <- as.factor(df$site_id)
+df$type <- as.factor(df$type)
+df$id <- as.factor(df$id)
 
 # view data
 glimpse(df)
@@ -156,7 +168,7 @@ df$year_commissioned <- year(df$date_commissioned)
 
 # take the mean image value for each site for each year
 df <- df %>%
-    group_by(site_id, site_type, year_image, year_commissioned) %>%
+    group_by(id, type, year_image, year_commissioned) %>%
     summarize(
         image_value_mean = mean(image_value),
         image_value_median = median(image_value)
@@ -184,21 +196,26 @@ write_csv(df, clean_yearly_file_name)
 # read in the data
 df <- read_csv(clean_yearly_file_name)
 
+# keep just two site types
+# possible values: "rural", "built", "ocean", "control", "mini-grid"
+df <- df %>%
+    filter(type %in% c("mini-grid", "control"))
+
 # run the model
 # https://bcallaway11.github.io/did/reference/att_gt.html
 did_control <- att_gt(
-    yname = "image_value_median", # outcome variable
+    yname = "image_value_mean", # outcome variable
     tname = "time_period", # time variable
-    idname = "site_id", # id variable
+    idname = "id", # id variable
     gname = "group", # first treatment period variable
     data = df, # data
     control_group = "nevertreated", # set the comparison group as either "never treated" or "not yet treated"
 )
 
 did_notyettreated <- att_gt(
-    yname = "image_value_median", # outcome variable
+    yname = "image_value_mean", # outcome variable
     tname = "time_period", # time variable
-    idname = "site_id", # id variable
+    idname = "id", # id variable
     gname = "group", # first treatment period variable
     data = df, # data
     control_group = "notyettreated", # set the comparison group as either "never treated" or "not yet treated"
@@ -236,14 +253,3 @@ did_notyettreated_agg_plt <- ggdid(did_notyettreated_agg) +
 print(did_control_agg_plt)
 print(did_notyettreated_agg_plt)
 ```
-
-## Results of Yearly Analysis
-### Control Group
-Overall summary of ATT's based on event-study/dynamic aggregation:  
-     ATT    Std. Error     [ 95%  Conf. Int.] 
- -0.0057        0.0071    -0.0195      0.0081 
- 
-### Not Yet Treated Group
-Overall summary of ATT's based on event-study/dynamic aggregation:  
-     ATT    Std. Error     [ 95%  Conf. Int.] 
- -0.0075        0.0074    -0.0219      0.0069 

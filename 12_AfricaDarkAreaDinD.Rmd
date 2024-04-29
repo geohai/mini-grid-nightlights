@@ -543,7 +543,7 @@ did_control_agg_plt_minigrid_built <- ggdid(did_control_agg_minigrid_built, xgap
     theme_bw() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 
 did_nyt_agg_plt_minigrid <- ggdid(did_nyt_agg_minigrid, xgap = 6) +
-    labs(title = "Group-Time ATTs for Mini-Grid Sites vs Not Yet Treated Sites", x = "Time Period in Months", y = "ATT") +
+    labs(title = "Average Effect of Mini-grid Construction on Nighttime Brightness for 700+ Sites in Africa", x = "Months Since Commissioning", y = "Change in Brightness") +
     theme_bw() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 
 # show them all
@@ -553,6 +553,9 @@ print(did_control_agg_plt_minigrid_jungle)
 print(did_control_agg_plt_minigrid_rural)
 print(did_control_agg_plt_minigrid_built)
 print(did_nyt_agg_plt_minigrid)
+
+# export one
+ggsave("figures/dark_africa_v2/did_nyt_agg_plt_minigrid_hires.png", did_nyt_agg_plt_minigrid, width = 12, height = 6, units = "in", dpi = 900)
 ```
 
 ## Results

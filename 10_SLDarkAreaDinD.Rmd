@@ -237,6 +237,7 @@ values_by_type_plot <- df %>%
     geom_smooth() +
     labs(title = "Nighttime Brightness Values Over Time by Site Type", x = "Image Date", y = "Nighttime Brightness") +
     theme_bw()
+values_by_type_plot
 ggsave("figures/dark_sl/values_by_type_plot_hi_res.png", values_by_type_plot, width = 12, height = 6, units = "in", dpi = 900)
 
 df %>%
@@ -299,6 +300,7 @@ ggplot(df, aes(x = group)) +
 # export df to RDS
 # View(df)
 write_rds(df, "data/dark_sl/all_df_for_csdind.rds")
+write.csv(df, "data/dark_sl/all_df_for_csdind.csv", row.names = FALSE)
 ```
 
 ## Run the Analysis
@@ -336,13 +338,18 @@ did_control_agg <- aggte(
 # view the results
 summary(did_control_agg)
 
-# plot group-time ATTs
+# plot group-time ATTs 
+# set font size to 16pt
 did_control_agg_plt <- ggdid(did_control_agg, xgap = 6) +
-    labs(title = "Average Effect of Mini-Grid Construction on Nighttime Brightness for Sierra Leone Mini-Grid Sites", x = "Months Since Commissioning", y = "Change in Brightness") +
+    labs(title = "Average Treatment Effect (ATT) of Mini-Grid Construction on Nighttime Brightness for Sierra Leone Mini-Grid Sites", x = "Months Since Commissioning", y = "Change in Brightness") +
     theme_bw() +
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))+
+    theme(text = element_text(size = 14))
 
 print(did_control_agg_plt)
+
+# export as a figure for thesis
+ggsave("figures/dark_sl/did_minigrid_vs_control_v3.png", did_control_agg_plt, width = 12, height = 6, units = "in", dpi = 600)
 
 # export the plot to hi-res png
 ggsave("figures/dark_sl/did_minigrid_vs_control_v3_hires.png", did_control_agg_plt, width = 12, height = 6, units = "in", dpi = 900)
@@ -386,6 +393,10 @@ did_notyettreated_agg_plt <- ggdid(did_notyettreated_agg, xgap = 6) +
     theme_bw() +
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 print(did_notyettreated_agg_plt)
+
+
+# export as a figure for thesis
+ggsave("figures/dark_sl/did_minigrid_vs_control_v3.png", did_notyettreated_agg_plt, width = 12, height = 6, units = "in", dpi = 600)
 
 ```
 
