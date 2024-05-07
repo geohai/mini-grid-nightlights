@@ -25,6 +25,8 @@ glimpse(grid_sf)
 grid_sf$type <- "mini-grid"
 # make type = "control" for all control sites
 grid_sf$type[grid_sf$site_type == "Control"] <- "control"
+# set date commissioned to 2013-12-01 for control sites
+grid_sf$date_commissioned[grid_sf$site_type == "Control"] <- as.Date("2013-12-01")
 
 # drop site_type
 grid_sf <- grid_sf %>%
@@ -115,7 +117,9 @@ df %>%
     labs(title = "Image Values Over Time Before Cleaning", x = "Image Date", y = "Image Value") +
     theme_bw() + 
     # hide legend
-    theme(legend.position = "none")
+    theme(legend.position = "none") +
+    # increase text size
+    theme(text = element_text(size = 20))
 
 # with geom_smooth
 df %>%
@@ -288,14 +292,18 @@ rm(start_date, end_date, start_year, end_year, start_month, end_month)
 df <- df %>%
     select(-month_commissioned, -year_commissioned, -month_image, -year_image)
 
-# plot histogram of group variable
+# plot histogram of group variable grouped by si
 # set y max to 120
-ggplot(df, aes(x = group)) +
+df %>% 
+    filter(type == "mini-grid" | type == "control") %>%
+    filter(image_date == "2014-01-01") %>% # just one row per site   
+    ggplot(aes(x = group)) +
     geom_histogram(binwidth = 1) +
     xlim(-5, 120) +
-    # scale_y_log10() +
-    labs(title = "Histogram of Group Variable", x = "Group", y = "log10(Count)") +
-    theme_bw()
+    labs(title = "Histogram of Group Variable for Nightlight Analysis in Sierra Leone", x = "Group", y = "Count") +
+    # size 20 font
+    theme_bw() +
+    theme(text = element_text(size = 20))
 
 # export df to RDS
 # View(df)

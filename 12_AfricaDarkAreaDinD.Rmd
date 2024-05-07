@@ -6,7 +6,7 @@ An online tutorial can be found [here](https://tilburgsciencehub.com/topics/anal
 
 ## Load Packages
 ```{r}
-library(tidyverse)
+library(tidyverse) 
 library(did)
 library(lubridate)
 library(sf)
@@ -78,7 +78,7 @@ saveRDS(africa_minigrid_sf, "./data/dark_africa/africa_minigrid_sf.rds")
 # read in the 2 sfs
 africa_dark_sf <- readRDS("./data/dark_africa/africa_dark_sf.rds")
 africa_minigrid_sf <- readRDS("./data/dark_africa/africa_minigrid_sf.rds")
-
+glimpse(africa_minigrid_sf)
 # merge the dfs
 africa_sf <- bind_rows(africa_minigrid_sf, africa_dark_sf)
 glimpse(africa_sf)

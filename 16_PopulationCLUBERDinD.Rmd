@@ -17,8 +17,20 @@ library(sf)
 ```{r}
 # read in data
 pop_sf <- st_read("data/pop_africa/pop_clean.geojson")
+glimpse(pop_sf)
 pop_melt_sf <- st_read("data/pop_africa/pop_melt.geojson")
 
+# convert date_commissioned to a date
+pop_sf$date_commissioned <- as.Date(pop_sf$date_commissioned)
+pop_sf$year_commissioned <- year(pop_sf$date_commissioned)
+# create a histogram of commissioning dates by year
+# add colors based on the integer year commissioned
+ggplot(pop_sf, aes(x = year_commissioned, fill = year_commissioned)) +
+    geom_histogram(binwidth = 1) +
+    labs(title = "Histogram of Commissioning Dates by Year for CLUB-ER Data", x = "Year", y = "Count") +
+    # large text
+    theme_bw() +    
+    theme(text = element_text(size = 20))
 # view the data with geom_sf as points sized and colored by log('X2020') values
 ggplot(pop_sf) +
     geom_sf(aes(size = X2020, color = log(X2020))) +
