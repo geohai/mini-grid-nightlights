@@ -47,6 +47,19 @@ sl_pop_melt_sf$site_type <- as.factor(sl_pop_melt_sf$site_type)
 # convert 'year' column to <date>
 sl_pop_melt_sf$year <- as.Date(sl_pop_melt_sf$year, format = "%Y")
 glimpse(sl_pop_melt_sf)
+
+# visualize as a time series before cleaning
+sl_pop_melt_sf %>%
+    # filter(type != "built") %>%
+    ggplot(aes(x = year, y = population, color = site_name)) +
+    geom_line() +
+    labs(title = "Population Values Over Time in Sierra Leone Before Cleaning", x = "Year", y = "Population Estimate (1km Buffer)") +
+    theme_bw() + 
+    # hide legend
+    theme(legend.position = "none") +
+    # increase text size
+    theme(text = element_text(size = 28, family = "serif"))
+
 # export as RDS
 saveRDS(sl_pop_melt_sf, "data/sl_pop/sl_pop_melt_sf.rds")
 ```

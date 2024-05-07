@@ -28,9 +28,9 @@ pop_sf$year_commissioned <- year(pop_sf$date_commissioned)
 ggplot(pop_sf, aes(x = year_commissioned, fill = year_commissioned)) +
     geom_histogram(binwidth = 1) +
     labs(title = "Histogram of Commissioning Dates by Year for CLUB-ER Data", x = "Year", y = "Count") +
-    # large text
+    # large text, serif font
     theme_bw() +    
-    theme(text = element_text(size = 20))
+    theme(text = element_text(size = 28, family = "serif"))
 # view the data with geom_sf as points sized and colored by log('X2020') values
 ggplot(pop_sf) +
     geom_sf(aes(size = X2020, color = log(X2020))) +

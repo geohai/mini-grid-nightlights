@@ -257,12 +257,19 @@ mean(inter$elec.access....)
 nrow(inter)
 sd(inter$elec.access....)
 # plot inter with geom_sf
-# color by elec.access....
-ggplot(inter) +
-  geom_sf(aes(fill = elec.access....)) +
-  # add title
+# color by elec.access.... with virdis color scale
+inter %>%
+  rename(prob_elec_access = elec.access....) %>%
+  ggplot() +
+  geom_sf(aes(fill = prob_elec_access)) +
+  scale_fill_viridis_c() +
   ggtitle("Electricity Access Probability by Building at a Mini-Grid Site") +
-  theme_bw()
+  theme_bw() + 
+  theme(text = element_text(size = 28, family = "serif")) +
+  # move legend to the bottom
+  theme(legend.position = "bottom") +
+  # remove long and lat axis labels
+  theme(axis.text.x = element_blank(), axis.text.y = element_blank())
 
 # # plot grid_cell with geom_sf
 # ggplot(grid_cell) +
