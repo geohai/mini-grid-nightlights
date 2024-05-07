@@ -244,7 +244,17 @@ df %>%
     # hide legend
     theme(legend.position = "none") +
     theme(text = element_text(size = 28, family = "serif"))
-    
+
+# scatter plot with geom smooth for just mgs and controls
+df %>%
+    filter(type == "mini-grid" | type == "control") %>%
+    ggplot(aes(x = image_date, y = image_value, color = type)) +
+    geom_point() + 
+    geom_smooth() +
+    labs(title = "Nightlight Image Values Over Time After Cleaning", x = "Image Date", y = "Image Value") +
+    theme_bw() + 
+    theme(text = element_text(size = 28, family = "serif")) +
+    theme(legend.position = "bottom")
 
 # with geom_smooth
 # set type 
@@ -339,7 +349,7 @@ df$id <- as.integer(df$id)
 
 # keep just certain groups
 df <- df %>%
-    filter(type == "mini-grid" | type == "control")
+    filter(type == "mini-grid" | type == "built")
 
 # run the model
 # https://bcallaway11.github.io/did/reference/att_gt.html
@@ -351,8 +361,6 @@ did_control <- att_gt(
     data = df, # data
     control_group = "nevertreated", # set the comparison group as either "never treated" or "not yet treated"
 )
-
-# summary(did_control)
 
 # aggregate the results
 did_control_agg <- aggte(
@@ -367,86 +375,48 @@ summary(did_control_agg)
 # plot group-time ATTs 
 # set font size to 16pt
 did_control_agg_plt <- ggdid(did_control_agg, xgap = 6) +
-    labs(title = "Average Treatment Effect (ATT) of Mini-Grid Construction on Nighttime Brightness for Sierra Leone Mini-Grid Sites", x = "Months Since Commissioning", y = "Change in Brightness") +
+    labs(title = "ATT of Mini-Grid Commissioning on Nighttime Brightness for Mini-Grid Sites vs. Built-Up Areas", x = "Months Since Commissioning", y = "Change in Brightness") +
     theme_bw() +
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))+
-    theme(text = element_text(size = 14))
+    theme(text = element_text(size = 20, family = "serif")) +
+    theme(legend.position = "bottom")
 
 print(did_control_agg_plt)
+ggsave("figures/dark_sl/did_minigrid_vs_built_serif.png", did_control_agg_plt, width = 16, height = 8, units = "in", dpi = 300)
 
 # export as a figure for thesis
-ggsave("figures/dark_sl/did_minigrid_vs_control_v3.png", did_control_agg_plt, width = 12, height = 6, units = "in", dpi = 600)
+# ggsave("figures/dark_sl/did_minigrid_vs_control_v3.png", did_control_agg_plt, width = 12, height = 6, units = "in", dpi = 600)
 
 # export the plot to hi-res png
-ggsave("figures/dark_sl/did_minigrid_vs_control_v3_hires.png", did_control_agg_plt, width = 12, height = 6, units = "in", dpi = 900)
-```
-
-## DiD with Not Yet Treated Sites
-```{r}
-# read in the data
-df <- readRDS("data/dark_sl/all_df_for_csdind.rds")
-
-# convert id to integer
-df$id <- as.integer(df$id)
-
-# filter just mini-grid sites
-df <- df %>%
-    filter(type == "mini-grid")
-
-# run the model
-did_notyettreated <- att_gt(
-    yname = "image_value", # outcome variable
-    tname = "time_period", # time variable
-    idname = "id", # id variable
-    gname = "group", # first treatment period variable
-    data = df, # data
-    control_group = "notyettreated", # set the comparison group as either "never treated" or "not yet treated"
-)
-
-# aggregate the results
-did_notyettreated_agg <- aggte(
-    did_notyettreated,
-    type = "dynamic", 
-    na.rm = TRUE
-)
-
-# view the results
-summary(did_notyettreated_agg)
-
-# plot group-time ATTs
-did_notyettreated_agg_plt <- ggdid(did_notyettreated_agg, xgap = 6) +
-    labs(title = "Group-Time ATTs for Sierra Leone Mini-Grid Sites vs Not Yet Treated Sites", x = "Time Period", y = "ATT") +
-    theme_bw() +
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
-print(did_notyettreated_agg_plt)
-
-
-# export as a figure for thesis
-ggsave("figures/dark_sl/did_minigrid_vs_control_v3.png", did_notyettreated_agg_plt, width = 12, height = 6, units = "in", dpi = 600)
-
+# ggsave("figures/dark_sl/did_minigrid_vs_control_v3_hires.png", did_control_agg_plt, width = 12, height = 6, units = "in", dpi = 900)
 ```
 
 ## Results
 
 ### Mini-Grid vs Control Sites
-     ATT    Std. Error     [ 95%  Conf. Int.] 
- -0.0595        0.0454    -0.1486      0.0295 
+    ATT    Std. Error     [ 95%  Conf. Int.] 
+ 0.0186         0.014    -0.0089      0.0461 
 
-### Mini-Grid vs Built Areas
-      ATT    Std. Error     [ 95%  Conf. Int.]  
- -0.5227        0.1027    -0.7241     -0.3214 *
+### Mini-Grids vs. Control + Not-Yet Treated Sites
+   ATT    Std. Error     [ 95%  Conf. Int.] 
+ 0.018        0.0137    -0.0089      0.0448 
+
+### Mini-Grids vs. Not-Yet Treated Sites
+   ATT    Std. Error     [ 95%  Conf. Int.]  
+ -0.09        0.0283    -0.1454     -0.0346 *
 
 ### Mini-Grid vs Rural Areas
-     ATT    Std. Error     [ 95%  Conf. Int.] 
- -0.026        0.0431    -0.1104      0.0585 
+    ATT    Std. Error     [ 95%  Conf. Int.] 
+ 0.0159        0.0143    -0.0122       0.044 
 
 ### Mini-Grid vs Ocean Areas
-     ATT    Std. Error     [ 95%  Conf. Int.] 
- -0.065        0.0451    -0.1534      0.0234 
+    ATT    Std. Error     [ 95%  Conf. Int.] 
+ 0.0091        0.0147    -0.0197       0.038 
 
-### Mini-Grids with Not-Yet Treated Sites as Control
-     ATT    Std. Error     [ 95%  Conf. Int.] 
- -0.091        0.0483    -0.1857      0.0037 
+### Mini-Grid vs Built Areas
+     ATT    Std. Error     [ 95%  Conf. Int.]  
+ -0.3882        0.0902     -0.565     -0.2113 *
+
  
 ## ANOVA Test
 
@@ -478,16 +448,35 @@ var_df %>%
     theme_bw()
 
 # create a density plot of image values by type, x max is 1
-df %>%
+dens_plot <- df %>%
     ggplot(aes(x = image_value, fill = type)) +
     # widen the kernel for better visualization
-    geom_density(alpha = 0.5, bw = 0.05) +
+    geom_density(alpha = 0.5, bw = 0.02) +
     xlim(-0.25, 0.75) +
     # add the means as thick vertical lines with the matching colors
     geom_vline(data = var_df, aes(xintercept = mean_image_value, color = type), linetype = "dashed", size = 1) +
     labs(title = "Density Plot of Image Values by Type", x = "Image Value", y = "Density") +
-    theme_bw()
+    theme_bw() +
+    theme(legend.position = "bottom") +
+    theme(text = element_text(size = 20, family = "serif"))
+dens_plot
+ggsave("figures/dark_sl/bright_values_by_type_density_serif.png", dens_plot, width = 16, height = 8, units = "in", dpi = 300)
 
+# create a q-q plot of image values by type
+qq_plot <- df %>%
+    ggplot(aes(sample = image_value, color = type)) +
+    stat_qq() +
+    # add theoretical quantiles
+    stat_qq_line() +
+    # y max to 5
+    ylim(-0.5, 3) +
+    xlim(-4,4) +
+    labs(title = "Q-Q Plot of Image Values by Type", x = "Theoretical Quantiles", y = "Sample Quantiles") +
+    theme_bw() +
+    theme(legend.position = "bottom") +
+    theme(text = element_text(size = 20, family = "serif"))
+qq_plot
+ggsave("figures/dark_sl/bright_values_by_type_qq_serif2.png", qq_plot, width = 16, height = 8, units = "in", dpi = 300)
 # check the normality of the residuals
 # eliminate the first two years 2014 and 2015
 df <- df %>%
