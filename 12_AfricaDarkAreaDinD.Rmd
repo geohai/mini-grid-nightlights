@@ -6,7 +6,7 @@ An online tutorial can be found [here](https://tilburgsciencehub.com/topics/anal
 
 ## Load Packages
 ```{r}
-library(tidyverse) 
+library(tidyverse)
 library(did)
 library(lubridate)
 library(sf)
@@ -150,9 +150,29 @@ glimpse(africa_df_melt)
 africa_df_melt <- africa_df_melt %>%
     filter(type != "built")
 
-# exclude type "minigrid"
-africa_df_melt <- africa_df_melt %>%
-    filter(type != "minigrid")
+# # exclude type "minigrid"
+# africa_df_melt <- africa_df_melt %>%
+#     filter(type != "minigrid")
+
+# plot a histogram of image values with log(x) and log(y) scale
+# color by log(x) in a linear scale
+df %>%
+    ggplot(aes(x = image_value)) +
+    geom_histogram(bins = 100) +
+    scale_x_log10() +
+    scale_y_log10() +
+    labs(title = "Histogram of Image Values", x = "Image Value", y = "Count") +
+    theme_bw()
+
+# create a line plot of image values over time colored by id
+df %>%
+    ggplot(aes(x = image_date, y = image_value, color = id)) +
+    geom_line() +
+    labs(title = "Image Values Over Time", x = "Image Date", y = "Image Value") +
+    theme_bw() + 
+    scale_y_log10()+
+    # hide legend
+    theme(legend.position = "none")
 
 # create a smooth plot of image values by over time colored by type
 africa_df_melt %>%
@@ -215,35 +235,6 @@ Takeaways:
 3. Ocean has the lowest mean at 0.149, median of 1.57
 4. Jungle has the second lowerst mean at 0.157, median of 0.151
 5. Desert has the lowest variance at 0.123 compared to ocean at 1.34 and jungle at 0.151
-
-
-
-## Visualize Data Before Cleaning Outliers
-```{r}
-# read in data
-africa_df_melt <- readRDS("./data/dark_africa/africa_df_melt.rds")
-df <- africa_df_melt
-
-# plot a histogram of image values with log(x) and log(y) scale
-# color by log(x) in a linear scale
-df %>%
-    ggplot(aes(x = image_value)) +
-    geom_histogram(bins = 100) +
-    scale_x_log10() +
-    scale_y_log10() +
-    labs(title = "Histogram of Image Values", x = "Image Value", y = "Count") +
-    theme_bw()
-
-# create a line plot of image values over time colored by id
-df %>%
-    ggplot(aes(x = image_date, y = image_value, color = id)) +
-    geom_line() +
-    labs(title = "Image Values Over Time", x = "Image Date", y = "Image Value") +
-    theme_bw() + 
-    scale_y_log10()+
-    # hide legend
-    theme(legend.position = "none")
-```
 
 # Outliers
 
@@ -309,6 +300,18 @@ df %>%
     theme_bw() + 
     # hide legend
     theme(legend.position = "none")
+
+# plot the data with geom_smooth
+dark_smooth_plot <- df %>%
+    filter(type != "built") %>%
+    ggplot(aes(x = image_date, y = image_value, color = type)) +
+    geom_smooth() +
+    labs(title = "Nighttime Brightness Value Over Time by Site Type for CLUB-ER Sites", x = "Image Date", y = "Image Value") +
+    theme_bw() +
+    theme(text = element_text(size = 20, family = "serif")) +
+    theme(legend.position = "bottom")
+dark_smooth_plot
+ggsave("figures/dark_africa/dark_smooth_plot.png", dark_smooth_plot, width = 16, height = 8, units = "in", dpi = 300)
 ```
 
 
@@ -371,9 +374,12 @@ saveRDS(df, "./data/dark_africa/africa_df_melt_clean_for_csdind.rds")
 africa_df_melt_clean_for_csdind <- readRDS("./data/dark_africa/africa_df_melt_clean_for_csdind.rds")
 df <- africa_df_melt_clean_for_csdind
 
-# # filter out all observations with type = "built"
+# keep only types minigrid and control group, whichever that is
 df <- df %>%
-    filter(type != "built")
+    filter(type == "minigrid" | type == "rural")
+
+# add 72 to every group variable for minigrid
+df$group <- ifelse(df$type == "minigrid", df$group + 72, df$group)
 
 # run the model
 # https://bcallaway11.github.io/did/reference/att_gt.html
@@ -387,7 +393,7 @@ did_control <- att_gt(
 )
 
 # export the model results
-saveRDS(did_control, "./data/dark_africa/did_control.rds")
+saveRDS(did_control, "./data/dark_africa/did_control_minigrid_rural_lag72.rds")
 
 # aggregate the results
 did_control_agg <- aggte(
@@ -397,110 +403,20 @@ did_control_agg <- aggte(
 )
 
 # export the results
-saveRDS(did_control_agg, "./data/dark_africa/did_control_agg.rds")
-
-# view the results
-# summary(did_control_agg)
-
-# plot group-time ATTs
-did_control_agg_plt <- ggdid(did_control_agg) +
-    labs(title = "Group-Time ATTs for Control Group", x = "Time Period", y = "ATT") +
-    theme_bw() +
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
-
-print(did_control_agg_plt)
-```
-
-## Rerun with just Certain Types as Controls
-```{r}
-# read in the data
-africa_df_melt_clean_for_csdind <- readRDS("./data/dark_africa/africa_df_melt_clean_for_csdind.rds")
-df <- africa_df_melt_clean_for_csdind
-
-# keep only types minigrid and built
-df <- df %>%
-    filter(type == "minigrid" | type == "jungle")
-
-# run the model
-# https://bcallaway11.github.io/did/reference/att_gt.html
-did_control <- att_gt(
-    yname = "image_value", # outcome variable
-    tname = "time_period", # time variable
-    idname = "id", # id variable
-    gname = "group", # first treatment period variable
-    data = df, # data
-    control_group = "nevertreated", # set the comparison group as either "never treated" or "not yet treated"
-)
-
-# export the model results
-saveRDS(did_control, "./data/dark_africa/did_control_minigrid_jungle.rds")
-
-# aggregate the results
-did_control_agg <- aggte(
-    did_control,
-    type = "dynamic", 
-    na.rm = TRUE
-)
-
-# export the results
-saveRDS(did_control_agg, "./data/dark_africa/did_control_agg_minigrid_jungle.rds")
+saveRDS(did_control_agg, "./data/dark_africa/did_control_agg_minigrid_rural_lag72.rds")
 
 # view the results
 summary(did_control_agg)
 
 # plot group-time ATTs
-did_control_agg_plt <- ggdid(did_control_agg) +
-    labs(title = "Group-Time ATTs for Minigrid vs Rainforest", x = "Time Period", y = "ATT") +
-    theme_bw() +
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+did_control_agg_plt <- ggdid(did_control_agg, xgap = 6) +
+    labs(title = "ATTs for Mini-grid Sites vs Rural Sites with 72-Month Lag", x = "Months Since Commissioning - 72", y = "Change in Brightness") +
+    theme_bw() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+    theme(text = element_text(size = 24, family = "serif"), legend.position = "bottom")
+ggsave("figures/dark_africa/did_control_agg_plt_minigrid_rural_lag72.png", did_control_agg_plt, width = 16, height = 10, units = "in", dpi = 300)
+
 
 print(did_control_agg_plt)
-```
-
-## Rerun Using Not Yet Treated as Control
-```{r}
-# read in the data
-africa_df_melt_clean_for_csdind <- readRDS("./data/dark_africa/africa_df_melt_clean_for_csdind.rds")
-df <- africa_df_melt_clean_for_csdind
-
-# filter for just mini-grid sites
-df <- df %>%
-    filter(type == "minigrid")
-
-# run the model
-# https://bcallaway11.github.io/did/reference/att_gt.html
-did_nyt <- att_gt(
-    yname = "image_value", # outcome variable
-    tname = "time_period", # time variable
-    idname = "id", # id variable
-    gname = "group", # first treatment period variable
-    data = df, # data
-    control_group = "notyettreated", # set the comparison group as either "never treated" or "not yet treated"
-)
-
-# export the model results
-saveRDS(did_nyt, "./data/dark_africa/did_nyt_minigrid.rds")
-
-# aggregate the results
-did_nyt_agg <- aggte(
-    did_nyt,
-    type = "dynamic", 
-    na.rm = TRUE
-)
-
-# export the results
-saveRDS(did_nyt_agg, "./data/dark_africa/did_nyt_agg_minigrid.rds")
-
-# view the results
-summary(did_nyt_agg)
-
-# plot group-time ATTs
-did_nyt_agg_plt <- ggdid(did_nyt_agg) +
-    labs(title = "Group-Time ATTs for Mini-Grid Sites vs Not Yet Treated Sites", x = "Time Period", y = "ATT") +
-    theme_bw() +
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
-
-print(did_nyt_agg_plt)
 ```
 
 ## Compile a Table of the Aggregated Results
@@ -522,29 +438,41 @@ summary(did_control_agg_minigrid_built)
 summary(did_nyt_agg_minigrid)
 
 # recreate the plots for each of these
+did_nyt_agg_plt_minigrid <- ggdid(did_nyt_agg_minigrid, xgap = 6) +
+    labs(title = "ATTs for Mini-grid Construction on Nighttime Brightness for 700+ Sites in Africa", x = "Months Since Commissioning", y = "Change in Brightness") +
+    theme_bw() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+    theme(text = element_text(size = 24, family = "serif"), legend.position = "bottom")
+
+did_nyt_agg_plt_minigrid_small <- ggdid(did_nyt_agg_minigrid, xgap = 6) +
+    labs(title = "ATTs for Mini-grid Construction on Nighttime Brightness for 700+ Sites in Africa", x = "Months Since Commissioning", y = "Change in Brightness") +
+    theme_bw() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+    theme(text = element_text(size = 14, family = "serif"), legend.position = "none")
+
 did_control_agg_plt_minigrid_ocean <- ggdid(did_control_agg_minigrid_ocean, xgap = 6) +
     labs(title = "Group-Time ATTs for Mini-Grid Sites vs Ocean Sites", x = "Time Period in Months", y = "ATT") +
-    theme_bw() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+    theme_bw() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+    theme(text = element_text(size = 14, family = "serif"), legend.position = "none")
 
 did_control_agg_plt_minigrid_desert <- ggdid(did_control_agg_minigrid_desert, xgap = 6) +
     labs(title = "Group-Time ATTs for Mini-Grid Sites vs Desert Sites", x = "Time Period in Months", y = "ATT") +
-    theme_bw() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))  
+    theme_bw() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+    theme(text = element_text(size = 14, family = "serif"), legend.position = "none")  
 
 did_control_agg_plt_minigrid_jungle <- ggdid(did_control_agg_minigrid_jungle, xgap = 6) +
     labs(title = "Group-Time ATTs for Mini-Grid Sites vs Rainforest Sites", x = "Time Period in Months", y = "ATT") +
-    theme_bw() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+    theme_bw() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+    theme(text = element_text(size = 14, family = "serif"), legend.position = "none")
 
 did_control_agg_plt_minigrid_rural <- ggdid(did_control_agg_minigrid_rural, xgap = 6) +
     labs(title = "Group-Time ATTs for Mini-Grid Sites vs Rural Sites", x = "Time Period in Months", y = "ATT") +
-    theme_bw() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+    theme_bw() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+    theme(text = element_text(size = 14, family = "serif"), legend.position = "none")
 
 did_control_agg_plt_minigrid_built <- ggdid(did_control_agg_minigrid_built, xgap = 6) +
     labs(title = "Group-Time ATTs for Mini-Grid Sites vs Built Sites", x = "Time Period in Months", y = "ATT") +
-    theme_bw() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+    theme_bw() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+    theme(text = element_text(size = 14, family = "serif"), legend.position = "none")
 
-did_nyt_agg_plt_minigrid <- ggdid(did_nyt_agg_minigrid, xgap = 6) +
-    labs(title = "Average Effect of Mini-grid Construction on Nighttime Brightness for 700+ Sites in Africa", x = "Months Since Commissioning", y = "Change in Brightness") +
-    theme_bw() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
 
 # show them all
 print(did_control_agg_plt_minigrid_ocean)
@@ -554,8 +482,17 @@ print(did_control_agg_plt_minigrid_rural)
 print(did_control_agg_plt_minigrid_built)
 print(did_nyt_agg_plt_minigrid)
 
-# export one
-ggsave("figures/dark_africa_v2/did_nyt_agg_plt_minigrid_hires.png", did_nyt_agg_plt_minigrid, width = 12, height = 6, units = "in", dpi = 900)
+# export
+ggsave("figures/dark_africa/did_nyt_agg_plt_minigrid.png", did_nyt_agg_plt_minigrid, width = 16, height = 10, units = "in", dpi = 300)
+ggsave("figures/dark_africa/did_nyt_agg_plt_minigrid_small.png", did_nyt_agg_plt_minigrid_small, width = 6, height = 5, units = "in", dpi = 300)
+ggsave("figures/dark_africa/did_control_agg_plt_minigrid_ocean.png", did_control_agg_plt_minigrid_ocean, width = 6, height = 5, units = "in", dpi = 300)
+ggsave("figures/dark_africa/did_control_agg_plt_minigrid_desert.png", did_control_agg_plt_minigrid_desert, width = 6, height = 5, units = "in", dpi = 300)
+ggsave("figures/dark_africa/did_control_agg_plt_minigrid_jungle.png", did_control_agg_plt_minigrid_jungle, width = 6, height = 5, units = "in", dpi = 300)
+ggsave("figures/dark_africa/did_control_agg_plt_minigrid_rural.png", did_control_agg_plt_minigrid_rural, width = 6, height = 5, units = "in", dpi = 300)
+ggsave("figures/dark_africa/did_control_agg_plt_minigrid_built.png", did_control_agg_plt_minigrid_built, width = 6, height = 5, units = "in", dpi = 300)
+
+# for presentation
+# ggsave("figures/dark_africa/did_nyt_agg_plt_minigrid_hires.png", did_nyt_agg_plt_minigrid, width = 12, height = 6, units = "in", dpi = 300)
 ```
 
 ## Results
