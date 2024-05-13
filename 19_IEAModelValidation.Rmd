@@ -343,19 +343,45 @@ mgs <- st_read("data/oemap/mgs_buffer_results.geojson")
 mgs <- mgs %>% filter(!is.na(mean))
 
 # plot the distribution of mean elec.access with density, fill by country
-ggplot(mgs) +
-  geom_density(aes(x = mean, fill = country), alpha = 0.5) +
+density_by_country <- ggplot(mgs) +
+  geom_density(aes(x = mean, fill = country), alpha = 0.5, ) +
   ggtitle("Density Plot of Mean Electricity Access Probability by Mini-Grid Site") +
-  theme_bw()
+  labs(x = "Mean Electricity Access Probability of Mini-Grid Sites (%)", y = "Density") +
+  theme_bw() +
+  theme(text = element_text(size = 24, family = "serif"), legend.position = "bottom")
+density_by_country
+ggsave("figures/oemap/density_by_country.png", density_by_country, width = 16, height = 8, units = "in", dpi = 300)
 
 # density plot of mean, fill with darkgreen
-ggplot(mgs) +
+density_overall <- ggplot(mgs) +
   geom_density(aes(x = mean), fill = "darkgreen", alpha = 0.5) +
   ggtitle("Density Plot of Mean Electricity Access Probability by Mini-Grid Site") +
-  # change x axis label and y axis label
-  xlab("Mean Electricity Access Probability of Mini-Grid Sites") +
-  ylab("Density") +
-  theme_bw()
+  labs(x = "Mean Electricity Access Probability of Mini-Grid Sites (%)", y = "Density") +
+  theme_bw() +
+  theme(text = element_text(size = 24, family = "serif"), legend.position = "bottom")
+density_overall
+ggsave("figures/oemap/density_overall.png", density_overall, width = 16, height = 8, units = "in", dpi = 300)
+
+# create a summary table of the mean, count, and sd by coutnry
+mgs_df <- st_drop_geometry(mgs)
+mgs_summary <- mgs_df %>% 
+  group_by(country) %>% 
+  summarise(
+    building_count = sum(count), 
+    avg_num_buildings = mean(count),
+    n_grids = n(),
+    mean_access_prob = mean(mean), 
+    sd_access_prob = mean(sd, na.rm = TRUE),
+    earliest_grid = min(date_commissioned),
+    latest_grid = max(date_commissioned)
+  )
+  # print entire df, don't let it get truncated
+print(mgs_summary, width = Inf)
+
+```
+
+## Other Charts Not Used in Paper
+```{r}
 
 # plot box and whisker plot of mean
 ggplot(mgs) +
@@ -367,19 +393,24 @@ ggplot(mgs) +
 ggplot(mgs) +
   geom_point(aes(x = date_commissioned, y = mean)) +
   ggtitle("Electricity Access Probability by Mini-Grid Site Commission Date") +
-  theme_bw()
+  theme_bw() + 
+  theme(text = element_text(size = 24, family = "serif"), legend.position = "bottom")
 
 # plot histogram of mean
 ggplot(mgs) +
   geom_histogram(aes(x = mean), binwidth = 5) +
   ggtitle("Histogram of Mean Electricity Access Probability by Mini-Grid Site") +
-  theme_bw()
+  theme_bw() +
+  theme(text = element_text(size = 24, family = "serif"), legend.position = "bottom")
+
 
 # plot histogram of commissioning dates
 ggplot(mgs) +
   geom_histogram(aes(x = date_commissioned), binwidth = 365) +
   ggtitle("Histogram of Mini-Grid Site Commission Dates") +
-  theme_bw()
+  theme_bw() +
+  theme(text = element_text(size = 24, family = "serif"), legend.position = "bottom")
+
 
 # macro stats
 summary(mgs$mean)

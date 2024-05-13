@@ -23,7 +23,8 @@ ggplot(sl_pop_sf) +
     geom_sf(aes(size = X2020, color = X2020)) +
     scale_color_viridis_c() +
     labs(title = "Community Population Sierra Leone in 2020", x = "Longitude", y = "Latitude") +
-    theme_bw()
+    theme_bw() +
+    theme(text = element_text(size = 28, family = "serif"), legend.position = "bottom")
 
 glimpse(sl_pop_sf)
 ```
@@ -37,8 +38,9 @@ glimpse(sl_pop_melt_sf)
 
 # convert site_name to factor
 sl_pop_melt_sf$site_name <- as.factor(sl_pop_melt_sf$site_name)
-# convert the 'id' column to an integer
-sl_pop_melt_sf$id <- as.integer(sl_pop_melt_sf$site_name)
+
+# create a unique integer id from the geometry column
+sl_pop_melt_sf$id <- as.integer(as.factor(as.character(sl_pop_melt_sf$geometry)))
 # convert PowerGen and CBIL to 'Mini-grid'
 sl_pop_melt_sf$site_type[sl_pop_melt_sf$site_type == "PowerGen"] <- "Mini-grid"
 sl_pop_melt_sf$site_type[sl_pop_melt_sf$site_type == "CBIL"] <- "Mini-grid"
@@ -112,11 +114,30 @@ df <- readRDS("data/sl_pop/sl_pop_melt_sf_clean.rds")
 
 # plot the population by year by site_type
 ggplot(df, aes(x = year, y = population, color = site_type)) +
-    geom_point() +
+    # geom_point() +
     geom_smooth() + 
     labs(title = "Population by Year by Site Type", x = "Year", y = "Population") +
-    theme_bw()
+    theme_bw() +
+    theme(text = element_text(size = 24, family = "serif"), legend.position = "bottom")
 
+ggsave("figures/pop_sl/pop_by_year_by_site_type_serif_all.png", width = 12, height = 8, units = "in", dpi = 300)
+
+# get summary statistics by site_type sd, mean, min, max, median
+df <- st_drop_geometry(df)
+summmary_stats <- df %>%
+    group_by(site_type) %>%
+    summarise(
+        sd = sd(population),
+        mean = mean(population),
+        min = min(population),
+        max = max(population),
+        median = median(population)
+    )
+# round to 0 decimal places
+summmary_stats <- summmary_stats %>%
+    mutate_if(is.numeric, ~round(., 0))
+
+print(summmary_stats)
 ```
 
 ## Data Requirements
@@ -168,10 +189,14 @@ saveRDS(df, "data/sl_pop/sl_pop_melt_sf_clean_dind.rds")
 ```{r}
 # read in the data
 df <- readRDS("data/sl_pop/sl_pop_melt_sf_clean_dind.rds")
+glimpse(df)
+# keep just mini-grids and built
+df <- df %>%
+    filter(type %in% c("mini-grid", "built"))
 
 # run the model
 # https://bcallaway11.github.io/did/reference/att_gt.html
-did_control <- att_gt(
+did <- att_gt(
     yname = "population", # outcome variable
     tname = "time_period", # time variable
     idname = "id", # id variable
@@ -180,52 +205,27 @@ did_control <- att_gt(
     control_group = "nevertreated", # set the comparison group as either "never treated" or "not yet treated"
 )
 
-did_notyettreated <- att_gt(
-    yname = "population", # outcome variable
-    tname = "time_period", # time variable
-    idname = "id", # id variable
-    gname = "group", # first treatment period variable
-    data = df, # data
-    control_group = "notyettreated", # set the comparison group as either "never treated" or "not yet treated"
-)
-
-# summary(did_control)
-# summary(did_notyettreated)
-
 # aggregate the results
-did_control_agg <- aggte(
-    did_control,
-    type = "dynamic", 
-    na.rm = TRUE
-)
-
-did_notyettreated_agg <- aggte(
-    did_notyettreated,
+did_agg <- aggte(
+    did,
     type = "dynamic", 
     na.rm = TRUE
 )
 
 # view the results
-summary(did_control_agg)
-summary(did_notyettreated_agg)
+summary(did_agg)
 
 # plot group-time ATTs
-did_control_agg_plt <- ggdid(did_control_agg) +
-    labs(title = "Group-Time ATTs for Control Group", x = "Time Period", y = "ATT") +
+did_agg_plt <- ggdid(did_agg) +
+    labs(title = "ATTs for Population for Mini-Grids versus Built-Up Areas in Sierra Leone", x = "Years Since Commissioning", y = "Change in Population") +
     theme_bw() +
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+    theme(text = element_text(size = 24, family = "serif"), legend.position = "bottom")
 
-did_notyettreated_agg_plt <- ggdid(did_notyettreated_agg) +
-    labs(title = "Group-Time ATTs for Not Yet Treated Group", x = "Time Period", y = "ATT") +
-    theme_bw() + 
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
-
-print(did_control_agg_plt)
-print(did_notyettreated_agg_plt)
+print(did_agg_plt)
 
 # export to png
-ggsave("figures/pop_sl/did_control_agg_plt.png", did_control_agg_plt, width = 12, height = 6, units = "in", dpi = 300)
-ggsave("figures/pop_sl/did_notyettreated_agg_plt.png", did_notyettreated_agg_plt, width = 12, height = 6, units = "in", dpi = 300)
+ggsave("figures/pop_sl/did_mg_built_serif.png", did_agg_plt, width = 10, height = 8, units = "in", dpi = 300)
 ```
 Warnings while running model:
 Warning message:
@@ -238,9 +238,17 @@ Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differenc
 ### Control Group
 Overall summary of ATT's based on event-study/dynamic aggregation:  
       ATT    Std. Error     [ 95%  Conf. Int.]  
- -46.9914       17.3284   -80.9544    -13.0285 *
+ 9.0895        21.401   -32.8557     51.0346 
 
 ### Not Yet Treated Group
 Overall summary of ATT's based on event-study/dynamic aggregation:  
       ATT    Std. Error     [ 95%  Conf. Int.]  
- -46.5999       16.7274    -79.385    -13.8148 *
+ 6.0153       21.7654   -36.6442     48.6747 
+
+ ## Mini-Grids vs. Rural Areas
+      ATT    Std. Error     [ 95%  Conf. Int.]  
+ 57.4288       18.6379    20.8991     93.9584 *
+
+ ## Mini-Grids vs. Urban Areas
+        ATT    Std. Error     [ 95%  Conf. Int.]  
+ -390.6164      107.7614   -601.825   -179.4079 *

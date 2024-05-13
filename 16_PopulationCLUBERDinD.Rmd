@@ -31,13 +31,22 @@ ggplot(pop_sf, aes(x = year_commissioned, fill = year_commissioned)) +
     # large text, serif font
     theme_bw() +    
     theme(text = element_text(size = 28, family = "serif"))
+
+# fetch a geojson file with the borders of the countries of the world from the internet
+world <- st_read("https://d2ad6b4ur7yvpq.cloudfront.net/naturalearth-3.3.0/ne_110m_admin_0_countries.geojson")
+
 # view the data with geom_sf as points sized and colored by log('X2020') values
 ggplot(pop_sf) +
     geom_sf(aes(size = X2020, color = log(X2020))) +
     scale_color_viridis_c() +
     scale_size(range = c(1, 20)) +
     labs(title = "Community Population in 2020", x = "Longitude", y = "Latitude") +
-    theme_bw()
+    theme_bw() + 
+    xlim(-20, 50) +
+    ylim(-30, 30) +
+    theme(text = element_text(size = 28, family = "serif")) +
+    # add in a background outline of countries in africa
+    geom_sf(data = world, fill = NA, color = "black")
 
 # visualize a histogram of the mean population by site_name with x and y log scales
 ggplot(pop_melt_sf, aes(x = population)) +
@@ -45,7 +54,8 @@ ggplot(pop_melt_sf, aes(x = population)) +
     scale_x_log10() +
     scale_y_log10() +
     labs(title = "Histogram of Population Readings", x = "Population", y = "Count") +
-    theme_bw()
+    theme_bw() +
+    theme(text = element_text(size = 28, family = "serif"))
 
 glimpse(pop_sf)
 
@@ -65,10 +75,6 @@ sum(dups$n) # 0
 pop_melt_sf <- st_read("data/pop_africa/pop_melt.geojson")
 df <- pop_melt_sf
 glimpse(df)
-
-# drop site_name since it's not fully unique
-df <- df %>%
-    select(-site_name)
 
 # create a unique id for each site based on the geometry
 df$id <- as.integer(as.factor(as.character(df$geometry)))
@@ -133,19 +139,52 @@ saveRDS(df, "data/pop_africa/pop_melt_sf_clean.rds")
 # read in the data
 df <- readRDS("data/pop_africa/pop_melt_sf_clean.rds")
 
+# remove rows that have na in any column
+df <- df %>%
+    filter(!is.na(population)) %>%
+    filter(!is.nan(population)) %>%
+    filter(!is.infinite(population))
+
+any(is.nan(df$type))
+
+glimpse(df)
 # plot the population by year by site_type
-ggplot(df, aes(x = year_pop, y = population, color = id)) +
-    geom_point() +
-    geom_smooth() + 
-    scale_y_log10() +
-    labs(title = "Population by Year by Site", x = "Year", y = "Population") +
-    theme_bw()
+ggplot(df, aes(x = year_pop, y = population, color = type)) +
+   geom_smooth(method = 'gam', formula = y ~ s(x, bs = "tp")) +
+    labs(title = "Population by Year by Site Type", x = "Year", y = "Population") +
+    theme_bw() +
+    theme(text = element_text(size = 28, family = "serif"), legend.position = "bottom")
 
 # make a line plot of each site's population by year
 ggplot(df, aes(x = year_pop, y = population, group = id, color = id)) +
     geom_line() +
     labs(title = "Population by Year by Site", x = "Year", y = "Population") +
     theme_bw()
+```
+
+## Pull Out Summary Statistics
+```{r}
+# read in the data
+df <- readRDS("data/pop_africa/pop_melt_sf_clean.rds")
+
+# drop geometry column
+df <- st_drop_geometry(df)
+# group by type and give me the sd, mean, min, max, and median of each
+summary_stats <- df %>%
+    group_by(type) %>%
+    summarise(
+        sd = sd(population),
+        mean = mean(population),
+        min = min(population),
+        max = max(population),
+        median = median(population)
+    )
+# round all values to 0 decimal places
+summary_stats <- summary_stats %>%
+    mutate_if(is.numeric, ~round(., 0))
+
+# print results
+summary_stats
 ```
 
 ## Data Requirements
@@ -187,6 +226,10 @@ saveRDS(df, "data/pop_africa/pop_melt_sf_clean_dind.rds")
 # read in the data
 df <- readRDS("data/pop_africa/pop_melt_sf_clean_dind.rds")
 
+# keep just the mini-grid sites
+df <- df %>%
+    filter(type == "mini-grid")
+
 # run the model
 # https://bcallaway11.github.io/did/reference/att_gt.html
 did_notyettreated <- att_gt(
@@ -209,9 +252,11 @@ summary(did_notyettreated_agg)
 
 # plot group-time ATTs
 did_notyettreated_agg_plt <- ggdid(did_notyettreated_agg) +
-    labs(title = "Group-Time ATTs using Not Yet Treated As Controls", x = "Years from Mini-Grid Commissioning", y = "ATT") +
+    labs(title = "Group-Time ATTs on Population using Not Yet Treated as Controls", x = "Years from Mini-Grid Commissioning", y = "Change in Population") +
     theme_bw() + 
-    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+    theme(text = element_text(size = 28, family = "serif"), legend.position = "bottom")
+ggsave("figures/pop_africa/did_notyettreated.png", did_notyettreated_agg_plt, width = 16, height = 10, units = "in", dpi = 300)
 
 print(did_notyettreated_agg_plt)
 ```
@@ -225,45 +270,104 @@ Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differenc
 
 Overall summary of ATT's based on event-study/dynamic aggregation:  
       ATT    Std. Error     [ 95%  Conf. Int.]  
- 400.3806      118.8584   167.4225    633.3387 *
-
+ 400.3807      117.1817   170.7088    630.0526 *
 
 Dynamic Effects:
  Event time  Estimate Std. Error [95% Simult.  Conf. Band]  
-        -18   68.7334   121.3114     -260.2182    397.6850  
-        -17  -33.4138    13.3435      -69.5963      2.7687  
-        -16  -24.8979     9.8465      -51.5981      1.8022  
-        -15   -7.2562    12.6575      -41.5788     27.0664  
-        -14  -40.7833     8.1061      -62.7640    -18.8027 *
-        -13    3.4890    11.4100      -27.4508     34.4287  
-        -12    1.7478    23.1963      -61.1520     64.6476  
-        -11  -25.4936    18.1921      -74.8240     23.8367  
-        -10    6.5079     8.3846      -16.2281     29.2440  
-         -9   -6.9297     8.1391      -28.9999     15.1404  
-         -8   -3.5855    11.4319      -34.5845     27.4135  
-         -7   -4.0129     8.6875      -27.5701     19.5443  
-         -6   -4.7055    15.8794      -47.7645     38.3535  
-         -5   30.6904    11.7120       -1.0682     62.4490  
-         -4    7.6804    21.2299      -49.8871     65.2480  
-         -3   -3.7052    11.5398      -34.9969     27.5866  
-         -2   10.3292    10.1298      -17.1392     37.7976  
-         -1   23.9232    14.9476      -16.6091     64.4555  
-          0   21.0137    11.0721       -9.0097     51.0372  
-          1   27.6184    15.6846      -14.9125     70.1493  
-          2   87.2916    29.0391        8.5483    166.0348 *
-          3  113.1311    41.4291        0.7907    225.4715 *
-          4  166.7177    67.2071      -15.5231    348.9585  
-          5  291.5636   128.5376      -56.9829    640.1101  
-          6  414.8476   137.6093       41.7021    787.9931 *
-          7  525.9467   233.1876     -106.3716   1158.2650  
-          8  610.0432   289.9620     -176.2263   1396.3128  
-          9  280.0738   243.8725     -381.2181    941.3656  
-         10  327.0172   290.1518     -459.7669   1113.8013  
-         11  226.6114   140.4785     -154.3143    607.5370  
-         12   65.7448   104.0048     -216.2778    347.7674  
-         13  183.6069   116.6348     -132.6636    499.8773  
-         14  340.1386   169.8078     -120.3172    800.5944  
-         15  685.3582   319.3128     -180.4998   1551.2161  
-         16  671.8122   340.0584     -250.3001   1593.9245  
-         17  939.2975   379.5789      -89.9798   1968.5748  
-         18 1629.3979   610.6105      -26.3516   3285.1474 
+        -18   68.7354   122.5022     -259.5730    397.0439  
+        -17  -33.4148    13.0991      -68.5207      1.6911  
+        -16  -24.8981     9.6327      -50.7140      0.9179  
+        -15   -7.2556    12.5177      -40.8035     26.2922  
+        -14  -40.7845     7.9508      -62.0927    -19.4762 *
+        -13    3.4886    11.7226      -27.9282     34.9055  
+        -12    1.7474    23.5947      -61.4870     64.9818  
+        -11  -25.4939    19.1719      -76.8750     25.8871  
+        -10    6.5080     7.6745      -14.0600     27.0759  
+         -9   -6.9291     7.9101      -28.1284     14.2701  
+         -8   -3.5860    10.8972      -32.7907     25.6187  
+         -7   -4.0123     8.2958      -26.2451     18.2206  
+         -6   -4.7062    15.3090      -45.7345     36.3222  
+         -5   30.6904    11.4764       -0.0665     61.4473  
+         -4    7.6808    21.1828      -49.0894     64.4511  
+         -3   -3.7052    11.3226      -34.0499     26.6396  
+         -2   10.3295     9.6467      -15.5239     36.1828  
+         -1   23.9237    14.9466      -16.1335     63.9809  
+          0   21.0134    11.3548       -9.4176     51.4445  
+          1   27.6182    14.5162      -11.2856     66.5220  
+          2   87.2917    28.4615       11.0143    163.5691 *
+          3  113.1320    43.2518       -2.7838    229.0478  
+          4  166.7190    72.6907      -28.0936    361.5316  
+          5  291.5686   123.1787      -38.5531    621.6902  
+          6  414.8528   140.0925       39.4019    790.3038 *
+          7  525.9526   222.3423      -69.9295   1121.8348  
+          8  610.0534   290.4164     -168.2689   1388.3757  
+          9  280.0716   244.9305     -376.3473    936.4905  
+         10  327.0141   293.7692     -460.2938   1114.3220  
+         11  226.6068   144.8668     -161.6392    614.8529  
+         12   65.7440   101.2127     -205.5083    336.9962  
+         13  183.6055   135.9639     -180.7808    547.9917  
+         14  340.1363   164.3973     -100.4519    780.7245  
+         15  685.3522   311.2685     -148.8542   1519.5585  
+         16  671.8111   338.0202     -234.0904   1577.7125  
+         17  939.2947   385.0179      -92.5616   1971.1511  
+         18 1629.3956   594.2047       36.9142   3221.8770 *
+
+
+## Run the DinD Analysis
+```{r}
+# read in the data
+df <- readRDS("data/pop_africa/pop_melt_sf_clean_dind.rds")
+
+# keep just the mini-grid & urban sites
+df <- df %>%
+    filter(type == "mini-grid" | type == "desert")
+
+# run the model
+# https://bcallaway11.github.io/did/reference/att_gt.html
+did <- att_gt(
+    yname = "population", # outcome variable
+    tname = "time_period", # time variable
+    idname = "id", # id variable
+    gname = "group", # first treatment period variable
+    data = df, # data
+    control_group = "nevertreated", # set the comparison group as either "never treated" or "not yet treated"
+)
+
+# aggregate the results
+did_agg <- aggte(
+    did,
+    type = "dynamic", 
+    na.rm = TRUE
+)
+# view the results
+summary(did_agg)
+
+# plot group-time ATTs
+did_agg_plt <- ggdid(did_agg) +
+    labs(title = "Group-Time ATTs on Population using Desert Areas as Controls", x = "Years from Mini-Grid Commissioning", y = "Change in Population") +
+    theme_bw() + 
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+    theme(text = element_text(size = 16, family = "serif"), legend.position = "bottom")
+ggsave("figures/pop_africa/did_mg_desert.png", did_agg_plt, width = 8, height = 6, units = "in", dpi = 300)
+
+print(did_agg_plt)
+```
+
+## Results
+Reference: Callaway, Brantly and Pedro H.C. Sant'Anna.  "Difference-in-Differences with Multiple Time Periods." Journal of Econometrics, Vol. 225, No. 2, pp. 200-230, 2021. <https://doi.org/10.1016/j.jeconom.2020.12.001>, <https://arxiv.org/abs/1803.09015> 
+
+Mini-Grids vs. Built-Up Areas  
+       ATT    Std. Error     [ 95%  Conf. Int.]  
+ -1803.237      256.9554   -2306.86   -1299.614 *
+
+Mini-Grids vs. Rural Areas
+      ATT    Std. Error     [ 95%  Conf. Int.]  
+ 582.8797      123.7333   340.3668    825.3926 *
+
+ Mini-Grids vs. Rainforest Areas
+       ATT    Std. Error     [ 95%  Conf. Int.]  
+ 588.1131      118.4676   355.9209    820.3052 *
+
+ Mini-Grids vs. Desert Areas
+      ATT    Std. Error     [ 95%  Conf. Int.]  
+ 597.5045      112.1513    377.692    817.3171 *

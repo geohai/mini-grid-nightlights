@@ -1,0 +1,64 @@
+## Measure Distances Between MGs
+
+```{r}
+library(sf)
+library(tidyverse)
+library(units)
+```
+
+
+```{r}
+# Load the data
+mgs <- st_read("data/mgs/mgs.geojson")
+
+# Calculate the distances between every mg to the other
+distances <- st_distance(mgs)
+
+# Create a matrix with the distances
+distances_matrix <- as.matrix(distances)
+
+# Create a data frame with the distances
+distances_df <- as.data.frame(distances_matrix)
+
+# divide by 1000 to get the distances in km, round to 0 decimal places
+distances_df <- distances_df / 1000
+# distances_df <- round(distances_df, 0)
+# convert to int
+# distances_df <- as.data.frame(lapply(distances_df, as.integer))
+
+# plot the frequency of all numbers in both dimensions
+hist(distances_df, main = "Histogram of Distances Between MGs", xlab = "Distance (km)", ylab = "Frequency", col = "lightblue", breaks = 100)
+
+# melt the data frame to long format with all columns
+distances_df_melted <- distances_df %>%
+    pivot_longer(cols = everything(), names_to = "grid", values_to = "distance_km")
+
+# drop the units
+distances_df_melted$distance_km <- as.numeric(distances_df_melted$distance_km)
+
+# drop rows with distance 0
+distances_df_melted <- distances_df_melted %>%
+    filter(distance_km != 0)
+
+# histogram of distances
+ggplot(distances_df_melted, aes(x = distance_km)) +
+    geom_histogram(binwidth = 100, fill = "lightblue") +
+    labs(title = "Histogram of Distances Between MGs", x = "Distance (km)", y = "Frequency") +
+    theme_bw() +
+    # set major x axis breaks to 1000
+    xlim(0, 10000) +
+    scale_x_continuous(breaks = seq(0, 20000, by = 1000)) +
+    theme(text = element_text(size = 28, family = "serif"), legend.position = "bottom")
+
+
+# sort the data frame by distance ascending, view smallest 10 values
+print(
+    distances_df_melted %>% arrange(distance_km),
+    n = 1000
+)
+
+# count the number less than 10km apart
+distances_df_melted %>%
+    filter(distance_km < 10) %>%
+    count()
+```

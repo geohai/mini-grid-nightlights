@@ -1,0 +1,265 @@
+# Analyze Relationships between Usage and Nighttime Brightness
+
+## Load Libraries
+```{r}
+library(tidyverse)
+```
+
+## Load Data
+```{r}
+pg <- read_csv("data/pg/consumption/monthly_site_data_clean.csv")
+cbil <- read_csv("data/cbil/monthly_energy_consumption_by_site.csv")
+
+glimpse(pg)
+glimpse(cbil)
+
+```
+> glimpse(pg)
+Rows: 1,415
+Columns: 6
+$ `Year Month`         <date> 2019-07-01, 2019-08-01, 2019-09-01, 2019-10-01, …
+$ Site                 <chr> "-----", "-----", "-----", "-----", "-----", "---…
+$ `Total Consumption`  <dbl> 970.90275, 1303.94843, 1222.80000, 1438.17700, 11…
+$ `# Customers`        <dbl> 228.0000, 228.0000, 228.0000, 228.0000, 165.0000,…
+$ `Total Revenue`      <dbl> 722.728595, 741.035291, 916.911522, 1005.538243, …
+$ `Total Transactions` <dbl> 524, 722, 964, 1012, 193, 0, 0, 52, 113, 411, 1, …
+
+> glimpse(cbil)
+Rows: 1,037
+Columns: 3
+$ Site                       <chr> "-----", "-----", "-----", "-----", "-----"…
+$ `timestamp per month`      <date> 2019-01-01, 2019-02-01, 2019-03-01, 2019-0…
+$ `Energy Consumption (kWh)` <dbl> 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0.00, 0…
+
+## Initial Visualization
+```{r}
+# create a stacked bar chart of energy consumption over time with a unique line for each site
+# cbil %>%
+#   ggplot(aes(x = `timestamp per month`, y = `Energy Consumption (kWh)`, fill = Site)) +
+#   geom_bar(stat = "identity") +
+#   scale_fill_viridis_d() +
+#   theme_bw() +
+#   theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+#   theme(legend.position = "none") +
+#   # set y grid lines to 10000 kWh intervals
+#   scale_y_continuous(breaks = seq(0, 150000, 10000)) +
+#   labs(title = "Energy Consumption by Site Over Time",
+#        x = "Date",
+#        y = "Energy Consumption (kWh)",
+#        fill = "Site")
+
+usage_time_plot <- pg %>%
+  ggplot(aes(x = `Year Month`, y = `Total Consumption`, fill = Site)) +
+  geom_bar(stat = "identity") +
+  scale_fill_viridis_d() +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  theme(legend.position = "none") +
+  scale_y_continuous(breaks = seq(0, 150000, 10000)) +
+  labs(title = "Total Consumption by Site Over Time",
+       x = "Date",
+       y = "Energy Consumption (kWh)",
+       fill = "Site") +
+  theme(text = element_text(family = "serif", size = 20))
+usage_time_plot
+ggsave("figures/usage/time_plot.png", usage_time_plot, width = 12, height = 6, units = "in", dpi = 300)
+
+customer_time_plot <- pg %>%
+  ggplot(aes(x = `Year Month`, y = `# Customers`, fill = Site)) +
+  geom_bar(stat = "identity") +
+  scale_fill_viridis_d() +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  theme(legend.position = "none") +
+  scale_y_continuous(breaks = seq(0, 150000, 10000)) +
+  labs(title = "Number of Customers by Site Over Time",
+       x = "Date",
+       y = "Number of Customers",
+       fill = "Site") +
+  theme(text = element_text(family = "serif", size = 20))
+customer_time_plot
+ggsave("figures/usage/customer_time_plot.png", customer_time_plot, width = 12, height = 6, units = "in", dpi = 300)
+```
+
+## Data Merging
+```{r}
+# read in pg data and cbil data
+use <- read_csv("data/pg/consumption/monthly_site_data_clean.csv")
+night <- readRDS("data/dark_sl/all_df_for_csdind.rds")
+
+# rename "use" columns with snake case
+use <- use %>%
+  rename(site_name = Site,
+         date = `Year Month`,
+         total_consumption = `Total Consumption`,
+         num_customers = `# Customers`,
+         total_revenue = `Total Revenue`,
+         total_transactions = `Total Transactions`)
+
+# keep just type = mini-grid or type = control for night df and pop df
+night <- night %>%
+  filter(type == "mini-grid" | type == "control")
+
+# merge use and night data by site name and date
+night_use <- left_join(night, use, by = c("site_name" = "site_name", "image_date" = "date"))
+
+# drop landcover column
+night_use <- night_use %>%
+  select(-landcover)
+
+# fill all NAs with 0
+night_use[is.na(night_use)] <- 0
+
+# save merged data
+saveRDS(night_use, "data/usage/night_use.rds")
+```
+
+## Data Analysis
+```{r}
+# load merged data
+night_use <- readRDS("data/usage/night_use.rds")
+
+# keep only months after mini-grid installation
+night_use <- night_use %>%
+  mutate(acpu = total_consumption / num_customers) %>%
+  mutate(image_value = ifelse(image_value < 0, 0, image_value)) %>%
+  filter(total_consumption > 0 & total_revenue > 0)
+
+# descriptive statistics
+summary(night_use)
+```
+> summary(night_use)
+        type      date_commissioned     site_name               id      
+ built    :   0   Min.   :2019-07-04   Length:1319        186    :  53  
+ control  :   0   1st Qu.:2019-10-27   Class :character   181    :  50  
+ mini-grid:1319   Median :2020-01-01   Mode  :character   202    :  50  
+ ocean    :   0   Mean   :2020-07-12                      187    :  49  
+ rural    :   0   3rd Qu.:2021-04-18                      188    :  49  
+                  Max.   :2022-08-13                      189    :  49  
+                                                          (Other):1019  
+   image_date          image_value         group         time_period    
+ Min.   :2019-07-01   Min.   :0.0000   Min.   : 67.00   Min.   : 67.00  
+ 1st Qu.:2021-07-01   1st Qu.:0.2679   1st Qu.: 70.00   1st Qu.: 91.00  
+ Median :2022-05-01   Median :0.3396   Median : 73.00   Median :101.00  
+ Mean   :2022-03-27   Mean   :0.3490   Mean   : 78.87   Mean   : 99.84  
+ 3rd Qu.:2023-02-01   3rd Qu.:0.4169   3rd Qu.: 88.00   3rd Qu.:110.00  
+ Max.   :2023-11-01   Max.   :4.5329   Max.   :104.00   Max.   :119.00  
+                                                                        
+ total_consumption  num_customers    total_revenue       total_transactions
+ Min.   :   84.81   Min.   :  57.0   Min.   :    1.034   Min.   :   1.0    
+ 1st Qu.:  628.79   1st Qu.: 112.0   1st Qu.:  315.265   1st Qu.: 411.0    
+ Median : 1189.78   Median : 193.0   Median :  638.386   Median : 659.0    
+ Mean   : 1879.91   Mean   : 239.4   Mean   :  969.597   Mean   : 841.3    
+ 3rd Qu.: 2334.82   3rd Qu.: 270.0   3rd Qu.: 1169.942   3rd Qu.:1050.0    
+ Max.   :32770.81   Max.   :2276.2   Max.   :15009.643   Max.   :8762.0    
+                                                                           
+      acpu        
+ Min.   : 0.3978  
+ 1st Qu.: 4.6249  
+ Median : 6.7664  
+ Mean   : 7.4026  
+ 3rd Qu.: 9.2618  
+ Max.   :43.0226  
+
+## Correlation Analysis
+```{r}
+night_use <- night_use %>%
+    filter(image_value > 0.01) %>%
+    filter(total_revenue > 30)
+
+# calculate correlation between nighttime brightness and total consumption
+cor(night_use$total_consumption, night_use$image_value)
+cor(night_use$acpu, night_use$image_value)
+cor(night_use$total_revenue, night_use$image_value)
+cor(night_use$total_transactions, night_use$image_value)
+cor(night_use$num_customers, night_use$image_value)
+```
+
+## Plots
+```{r}
+# plot the relationship between nighttime brightness and total consumption
+use_plot <- night_use %>%
+  # set negative image_value values to 0
+  ggplot(aes(x = image_value, y = total_consumption)) +
+  # make size proportional to number of customers
+  geom_point(aes(size = num_customers, col = num_customers), alpha = 0.5) +
+  # use viridis
+  scale_color_viridis_c() +
+  geom_smooth(method = "lm", col = "darkgreen") +
+  # log scales for x and y
+  scale_x_log10() +
+  scale_y_log10() +
+  labs(title = "Relationship Between Nighttime Brightness and Total Consumption",
+       x = "Nighttime Brightness log10(nW/cm^2/sr)",
+       y = "log10 Total Consumption log10(kWh)") +
+   # change to serif font, text size 20
+   theme_bw() +
+   theme(text = element_text(family = "serif", size = 20), legend.position = "right")
+use_plot
+ggsave("figures/usage/usage_scatterplot.png", use_plot, width = 12, height = 6, units = "in", dpi = 300)
+
+
+# plot the relationship between nighttime brightness and total consumption
+acpu_plot <- night_use %>%
+  # set negative image_value values to 0
+  ggplot(aes(x = image_value, y = acpu)) +
+  # make size proportional to number of customers
+  geom_point(aes(size = num_customers, col = num_customers), alpha = 0.5) +
+  # use viridis
+  scale_color_viridis_c() +
+  geom_smooth(method = "lm", col = "darkgreen") +
+  # log scales for x and y
+  scale_x_log10() +
+  scale_y_log10() +
+  labs(title = "Relationship Between Nighttime Brightness and ACPU",
+       x = "Nighttime Brightness (nW/cm^2/sr)",
+       y = "Average Consumption Per User (ACPU) (kWh)") +
+   # change to serif font, text size 20
+   theme_bw() +
+   theme(text = element_text(family = "serif", size = 20), legend.position = "right")
+acpu_plot
+ggsave("figures/usage/acpu_scatterplot.png", use_plot, width = 12, height = 6, units = "in", dpi = 300)
+
+# plot the relationship between nighttime brightness and total consumption
+rev_plot <- night_use %>%
+  filter(total_revenue > 30) %>%
+  # set negative image_value values to 0
+  ggplot(aes(x = image_value, y = total_revenue)) +
+  # make size proportional to number of customers
+  geom_point(aes(size = num_customers, col = num_customers), alpha = 0.5) +
+  # use viridis
+  scale_color_viridis_c() +
+  geom_smooth(method = "lm", col = "darkgreen") +
+  # log scales for x and y
+  scale_x_log10() +
+  scale_y_log10() +
+  labs(title = "Relationship Between Nighttime Brightness and Total Revenue",
+       x = "Nighttime Brightness (nW/cm^2/sr)",
+       y = "Total Revenue (USD)") +
+   # change to serif font, text size 20
+   theme_bw() +
+   theme(text = element_text(family = "serif", size = 20), legend.position = "right")
+rev_plot
+ggsave("figures/usage/rev_scatterplot.png", use_plot, width = 12, height = 6, units = "in", dpi = 300)
+
+# plot the relationship between nighttime brightness and total consumption
+cust_plot <- night_use %>%
+  # set negative image_value values to 0
+  ggplot(aes(x = image_value, y = num_customers)) +
+  # make size proportional to number of customers
+  geom_point(aes(size = num_customers, col = num_customers), alpha = 0.5) +
+  # use viridis
+  scale_color_viridis_c() +
+  geom_smooth(method = "lm", col = "darkgreen") +
+  # log scales for x and y
+  scale_x_log10() +
+  scale_y_log10() +
+  labs(title = "Relationship Between Nighttime Brightness and # of Customers",
+       x = "Nighttime Brightness (nW/cm^2/sr)",
+       y = "Number of Customers in Grid (count)") +
+   # change to serif font, text size 20
+   theme_bw() +
+   theme(text = element_text(family = "serif", size = 20), legend.position = "right")
+cust_plot
+ggsave("figures/usage/acpu_scatterplot.png", use_plot, width = 12, height = 6, units = "in", dpi = 300)
+```
