@@ -190,8 +190,8 @@ use_plot <- night_use %>%
   scale_x_log10() +
   scale_y_log10() +
   labs(title = "Relationship Between Nighttime Brightness and Total Consumption",
-       x = "Nighttime Brightness log10(nW/cm^2/sr)",
-       y = "log10 Total Consumption log10(kWh)") +
+       x = "Nighttime Brightness (nW/cm^2/sr)",
+       y = "Total Consumption (kWh)") +
    # change to serif font, text size 20
    theme_bw() +
    theme(text = element_text(family = "serif", size = 20), legend.position = "right")
@@ -218,7 +218,7 @@ acpu_plot <- night_use %>%
    theme_bw() +
    theme(text = element_text(family = "serif", size = 20), legend.position = "right")
 acpu_plot
-ggsave("figures/usage/acpu_scatterplot.png", use_plot, width = 12, height = 6, units = "in", dpi = 300)
+ggsave("figures/usage/acpu_scatterplot.png", acpu_plot, width = 12, height = 6, units = "in", dpi = 300)
 
 # plot the relationship between nighttime brightness and total consumption
 rev_plot <- night_use %>%
@@ -240,7 +240,7 @@ rev_plot <- night_use %>%
    theme_bw() +
    theme(text = element_text(family = "serif", size = 20), legend.position = "right")
 rev_plot
-ggsave("figures/usage/rev_scatterplot.png", use_plot, width = 12, height = 6, units = "in", dpi = 300)
+ggsave("figures/usage/rev_scatterplot.png", rev_plot, width = 12, height = 6, units = "in", dpi = 300)
 
 # plot the relationship between nighttime brightness and total consumption
 cust_plot <- night_use %>%
@@ -261,5 +261,38 @@ cust_plot <- night_use %>%
    theme_bw() +
    theme(text = element_text(family = "serif", size = 20), legend.position = "right")
 cust_plot
-ggsave("figures/usage/acpu_scatterplot.png", use_plot, width = 12, height = 6, units = "in", dpi = 300)
+ggsave("figures/usage/cust_scatterplot.png", cust_plot, width = 12, height = 6, units = "in", dpi = 300)
+```
+
+## Look for Zero Usage Sites
+```{r}
+# read in night-use data
+night_use <- readRDS("data/usage/night_use.rds")
+
+# filter for just mini-grid sites
+night_use <- night_use %>%
+  filter(type == "mini-grid")
+
+# usage by period plot
+usage_by_period_plot <- night_use %>%
+  ggplot(aes(x = time_period - group, y = `total_consumption`, col = site_name)) +
+  # add line with some thickness
+    geom_line(size = 1) +
+  # log scale for y axis
+  scale_y_log10() +
+  # set x axis lim from -10 to 60, y from -1 to 10000
+    coord_cartesian(xlim = c(-20, 50), ylim = c(-10, 25000)) +
+  theme_bw() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  theme(legend.position = "none") +
+  labs(title = "Total Consumption by Site Relative to Commmisioning Date",
+       x = "Months Since Commissioning",
+       y = "Energy Consumption (kWh)",
+       fill = "Site") +
+  theme(text = element_text(family = "serif", size = 20)) +
+  # use viridis color scale
+  scale_color_viridis_d()
+
+usage_by_period_plot
+ggsave("figures/usage/period_plot.png", usage_by_period_plot, width = 12, height = 6, units = "in", dpi = 300)
 ```
