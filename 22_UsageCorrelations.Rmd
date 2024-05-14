@@ -62,7 +62,7 @@ usage_time_plot <- pg %>%
        fill = "Site") +
   theme(text = element_text(family = "serif", size = 20))
 usage_time_plot
-ggsave("figures/usage/time_plot.png", usage_time_plot, width = 12, height = 6, units = "in", dpi = 300)
+ggsave("figures/usage/usage_time_plot.png", usage_time_plot, width = 12, height = 6, units = "in", dpi = 300)
 
 customer_time_plot <- pg %>%
   ggplot(aes(x = `Year Month`, y = `# Customers`, fill = Site)) +
@@ -167,12 +167,26 @@ night_use <- night_use %>%
     filter(image_value > 0.01) %>%
     filter(total_revenue > 30)
 
-# calculate correlation between nighttime brightness and total consumption
+glimpse(night_use)
+# calculate correlation between nighttime brightness vs. total consumption
 cor(night_use$total_consumption, night_use$image_value)
 cor(night_use$acpu, night_use$image_value)
 cor(night_use$total_revenue, night_use$image_value)
 cor(night_use$total_transactions, night_use$image_value)
 cor(night_use$num_customers, night_use$image_value)
+
+# look at the relationship between nighttime brightness and total consumption with regression
+use.lm <- lm(night_use$image_value ~ night_use$total_consumption)
+summary(use.lm)
+
+acpu.lm <- lm(night_use$image_value ~ night_use$acpu)
+summary(acpu.lm)
+
+rev.lm <- lm(night_use$image_value ~ night_use$total_revenue)
+summary(rev.lm)
+
+cust.lm <- lm(night_use$image_value ~ night_use$num_customers)
+summary(cust.lm)
 ```
 
 ## Plots
@@ -189,17 +203,17 @@ use_plot <- night_use %>%
   # log scales for x and y
   scale_x_log10() +
   scale_y_log10() +
-  labs(title = "Relationship Between Nighttime Brightness and Total Consumption",
+  labs(title = "Nighttime Brightness vs. Total Consumption",
        x = "Nighttime Brightness (nW/cm^2/sr)",
        y = "Total Consumption (kWh)") +
    # change to serif font, text size 20
    theme_bw() +
-   theme(text = element_text(family = "serif", size = 20), legend.position = "right")
+   theme(text = element_text(family = "serif", size = 20), legend.position = "none")
 use_plot
-ggsave("figures/usage/usage_scatterplot.png", use_plot, width = 12, height = 6, units = "in", dpi = 300)
+ggsave("figures/usage/usage_scatterplot.png", use_plot, width = 8, height = 6, units = "in", dpi = 300)
 
 
-# plot the relationship between nighttime brightness and total consumption
+# plot the nighttime brightness vs. total consumption
 acpu_plot <- night_use %>%
   # set negative image_value values to 0
   ggplot(aes(x = image_value, y = acpu)) +
@@ -211,16 +225,16 @@ acpu_plot <- night_use %>%
   # log scales for x and y
   scale_x_log10() +
   scale_y_log10() +
-  labs(title = "Relationship Between Nighttime Brightness and ACPU",
+  labs(title = "Nighttime Brightness vs. ACPU",
        x = "Nighttime Brightness (nW/cm^2/sr)",
        y = "Average Consumption Per User (ACPU) (kWh)") +
    # change to serif font, text size 20
    theme_bw() +
-   theme(text = element_text(family = "serif", size = 20), legend.position = "right")
+   theme(text = element_text(family = "serif", size = 20), legend.position = "none")
 acpu_plot
-ggsave("figures/usage/acpu_scatterplot.png", acpu_plot, width = 12, height = 6, units = "in", dpi = 300)
+ggsave("figures/usage/acpu_scatterplot.png", acpu_plot, width = 8, height = 6, units = "in", dpi = 300)
 
-# plot the relationship between nighttime brightness and total consumption
+# plot the nighttime brightness vs. total consumption
 rev_plot <- night_use %>%
   filter(total_revenue > 30) %>%
   # set negative image_value values to 0
@@ -233,16 +247,16 @@ rev_plot <- night_use %>%
   # log scales for x and y
   scale_x_log10() +
   scale_y_log10() +
-  labs(title = "Relationship Between Nighttime Brightness and Total Revenue",
+  labs(title = "Nighttime Brightness vs. Total Revenue",
        x = "Nighttime Brightness (nW/cm^2/sr)",
        y = "Total Revenue (USD)") +
    # change to serif font, text size 20
    theme_bw() +
-   theme(text = element_text(family = "serif", size = 20), legend.position = "right")
+   theme(text = element_text(family = "serif", size = 20), legend.position = "none")
 rev_plot
-ggsave("figures/usage/rev_scatterplot.png", rev_plot, width = 12, height = 6, units = "in", dpi = 300)
+ggsave("figures/usage/rev_scatterplot.png", rev_plot, width = 8, height = 6, units = "in", dpi = 300)
 
-# plot the relationship between nighttime brightness and total consumption
+# plot the nighttime brightness vs. total consumption
 cust_plot <- night_use %>%
   # set negative image_value values to 0
   ggplot(aes(x = image_value, y = num_customers)) +
@@ -254,14 +268,14 @@ cust_plot <- night_use %>%
   # log scales for x and y
   scale_x_log10() +
   scale_y_log10() +
-  labs(title = "Relationship Between Nighttime Brightness and # of Customers",
+  labs(title = "Nighttime Brightness vs. # of Customers",
        x = "Nighttime Brightness (nW/cm^2/sr)",
        y = "Number of Customers in Grid (count)") +
    # change to serif font, text size 20
    theme_bw() +
-   theme(text = element_text(family = "serif", size = 20), legend.position = "right")
+   theme(text = element_text(family = "serif", size = 20), legend.position = "none")
 cust_plot
-ggsave("figures/usage/cust_scatterplot.png", cust_plot, width = 12, height = 6, units = "in", dpi = 300)
+ggsave("figures/usage/cust_scatterplot.png", cust_plot, width = 8, height = 6, units = "in", dpi = 300)
 ```
 
 ## Look for Zero Usage Sites
@@ -296,3 +310,40 @@ usage_by_period_plot <- night_use %>%
 usage_by_period_plot
 ggsave("figures/usage/period_plot.png", usage_by_period_plot, width = 12, height = 6, units = "in", dpi = 300)
 ```
+
+
+## Look at Zero Usage Sites
+```{r}
+# read in night-use data
+night_use <- readRDS("data/usage/night_use.rds")
+
+# filter for just mini-grid sites
+night_use <- night_use %>%
+  filter(type == "mini-grid") %>%
+  filter(image_date > date_commissioned)
+
+post_install_count <- post_install %>%
+  group_by(site_name) %>%
+  summarize(
+        n = n(),
+        n0 = sum(total_consumption == 0),
+    )
+
+# total number of observations with 0 usage
+sum(post_install_count$n0)
+
+# plot on a histogram
+zero_use_hist <-
+    post_install_count %>%
+    ggplot(aes(x = n0)) +
+    geom_histogram(binwidth = 1, fill = "darkgreen", col = "black") +
+    labs(title = "Number of Sites with Zero Usage Months Post-Commissioning",
+         x = "Number of Months with Zero Usage",
+         y = "Number of Sites") +
+    theme_bw() +
+    theme(text = element_text(family = "serif", size = 20))
+zero_use_hist
+ggsave("figures/usage/zero_use_hist.png", zero_use_hist, width = 12, height = 4, units = "in", dpi = 300)
+
+```
+
