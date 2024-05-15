@@ -405,6 +405,9 @@ did_control_agg <- aggte(
 # export the results
 saveRDS(did_control_agg, "./data/dark_africa/did_control_agg_minigrid_rural_lag72.rds")
 
+# read in the did model results
+did_control_agg <- readRDS("./data/dark_africa/did_control_agg_minigrid_rural_lag72.rds")
+
 # view the results
 summary(did_control_agg)
 
@@ -413,7 +416,7 @@ did_control_agg_plt <- ggdid(did_control_agg, xgap = 6) +
     labs(title = "ATTs for Mini-grid Sites vs Rural Sites with 72-Month Lag", x = "Months Since Commissioning - 72", y = "Change in Brightness") +
     theme_bw() + theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
     theme(text = element_text(size = 24, family = "serif"), legend.position = "bottom")
-ggsave("figures/dark_africa/did_control_agg_plt_minigrid_rural_lag72.png", did_control_agg_plt, width = 16, height = 10, units = "in", dpi = 300)
+ggsave("figures/dark_africa/did_control_agg_plt_minigrid_rural_lag72_wide.png", did_control_agg_plt, width = 16, height = 6, units = "in", dpi = 300)
 
 
 print(did_control_agg_plt)

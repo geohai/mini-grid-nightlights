@@ -591,3 +591,27 @@ alpha = 0.05
 Reject Ho if p <= alpha/2
 
 The p-values are all less than 0.05, so we reject the null hypothesis that the medians of the groups are equal.
+
+> dunn_res
+$chi2
+[1] 6713.842
+
+$Z
+ [1]  55.892652  55.921303  -3.014702  74.453482  14.508918  18.532180
+ [7]  62.522285   3.227042   6.600983 -11.931197
+
+$P
+ [1] 0.000000e+00 0.000000e+00 1.286160e-03 0.000000e+00 5.319247e-48
+ [6] 5.679563e-77 0.000000e+00 6.253859e-04 2.042204e-11 4.069742e-33
+
+$P.adjusted
+ [1] 0.000000e+00 0.000000e+00 1.286160e-02 0.000000e+00 5.319247e-47
+ [6] 5.679563e-76 0.000000e+00 6.253859e-03 2.042204e-10 4.069742e-32
+
+$comparisons
+ [1] "built - control"     "built - mini-grid"   "control - mini-grid"
+ [4] "built - ocean"       "control - ocean"     "mini-grid - ocean"  
+ [7] "built - rural"       "control - rural"     "mini-grid - rural"  
+[10] "ocean - rural"      
+
+> 
