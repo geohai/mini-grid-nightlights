@@ -127,6 +127,14 @@ night_use <- night_use %>%
 
 # descriptive statistics
 summary(night_use)
+
+# keep just non-zero values and non-outliers
+night_use <- night_use %>%
+    filter(image_value > 0.01) %>%
+    filter(total_revenue > 30)
+
+# export clean night_use
+saveRDS(night_use, "data/usage/night_use_clean.rds")
 ```
 > summary(night_use)
         type      date_commissioned     site_name               id      
@@ -163,11 +171,9 @@ summary(night_use)
 
 ## Correlation Analysis
 ```{r}
-night_use <- night_use %>%
-    filter(image_value > 0.01) %>%
-    filter(total_revenue > 30)
+# read in clean night use
+night_use <- readRDS("data/usage/night_use_clean.rds")
 
-glimpse(night_use)
 # calculate correlation between nighttime brightness vs. total consumption
 cor(night_use$total_consumption, night_use$image_value)
 cor(night_use$acpu, night_use$image_value)
@@ -191,6 +197,34 @@ summary(cust.lm)
 
 ## Plots
 ```{r}
+# read in night use clean
+night_use <- readRDS("data/usage/night_use_clean.rds")
+
+# for presentation
+# plot the relationship between nighttime brightness and total consumption
+use_plot_pres <- night_use %>%
+  # set negative image_value values to 0
+  ggplot(aes(x = image_value, y = total_consumption)) +
+  # make size proportional to number of customers
+  geom_point(aes(size = num_customers, col = num_customers), alpha = 0.5) +
+  # use viridis
+  scale_color_viridis_c() +
+  geom_smooth(method = "lm", col = "darkgreen") +
+  # log scales for x and y
+  scale_x_log10() +
+  scale_y_log10() +
+  labs(title = "Nighttime Brightness vs. Total Consumption",
+       x = "Nighttime Brightness (nW/cm^2/sr)",
+       y = "Total Consumption (kWh)") +
+   # change to serif font, text size 20
+   theme_bw() +
+   theme(text = element_text(size = 18), legend.position = "right")
+use_plot_pres
+ggsave("figures/usage/usage_scatterplot_pres.png", use_plot_pres, width = 15, height = 7, units = "in", dpi = 300)
+
+
+# for thesis
+
 # plot the relationship between nighttime brightness and total consumption
 use_plot <- night_use %>%
   # set negative image_value values to 0

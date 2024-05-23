@@ -1,0 +1,169 @@
+# Ocean Minus DiD
+In this notebook, I'm subtract the brightness values of the ocean from the brightness values of the mini-grids to see if it changes the results of the DiD.
+
+## Load Libraries
+```{r}
+library(tidyverse)
+library(sf)
+library(lubridate)
+library(did)
+```
+
+## SL-Level Analysis
+```{r}
+# read in dark_sl df for csdid
+dark_sl <- readRDS("data/dark_sl/all_df_for_csdind.rds")
+
+# find the mean brightness at each image_date by type
+sl_means <- dark_sl %>%
+    group_by(image_date, type) %>%
+    summarise(
+        mean_value = mean(image_value),
+        median_value = median(image_value),
+        sd_value = sd(image_value),
+        n = n()
+    )
+
+# visualize
+ggplot(sl_means, aes(x = image_date, y = mean_value, color = type)) +
+    geom_line() +
+    labs(title = "Mean Brightness by Image Date and Type in Sierra Leone",
+         x = "Image Date",
+         y = "Mean Brightness") +
+    theme_bw() +
+    theme(text = element_text(size = 20, family = "serif") , legend.position = "bottom")
+ggsave("figures/dark_sl/agg_means_by_type.png", width = 12, height = 6)
+
+# export means as RDS
+saveRDS(sl_means, "data/dark_sl/sl_means.rds")
+rm(dark_sl, sl_means)
+```
+
+## Subtract Ocean Means from Other Values
+```{r}
+# read in data
+dark_sl <- readRDS("data/dark_sl/all_df_for_csdind.rds")
+df <- dark_sl
+sl_means <- readRDS("data/dark_sl/sl_means.rds")
+ocean_means <- sl_means %>% filter(type == "ocean") %>% select(-type)
+
+# subtract ocean median from other values
+df <- df %>%
+    left_join(ocean_means, by = "image_date") %>%
+    mutate(
+        image_value = image_value - median_value
+    ) %>%
+    select(-c(mean_value, mean_value, sd_value, n))
+
+# find the mean brightness at each image_date by type
+sl_new_means <- df %>%
+    group_by(image_date, type) %>%
+    summarise(
+        mean_value = mean(image_value),
+        median_value = median(image_value),
+        sd_value = sd(image_value),
+        n = n()
+    )
+
+# revisualize
+ggplot(sl_new_means, aes(x = image_date, y = median_value, color = type)) +
+    geom_line() +
+    labs(title = "Median Brightness Minus Ocean by Image Date and Type in Sierra Leone",
+         x = "Image Date",
+         y = "Median Brightness") +
+    theme_bw() +
+    theme(text = element_text(size = 20, family = "serif") , legend.position = "bottom")
+ggsave("figures/dark_sl/agg_medians_by_type_minus_ocean.png", width = 12, height = 6)
+
+
+# export new dfs
+saveRDS(df, "data/dark_sl/all_df_for_csdind_minus_ocean.rds")
+saveRDS(sl_new_means, "data/dark_sl/sl_means_minus_ocean.rds")
+rm(dark_sl, df, sl_means, sl_new_means, ocean_means)
+```
+
+## Rerun DiD
+```{r}
+# read in data
+df <- readRDS("data/dark_sl/all_df_for_csdind_minus_ocean.rds")
+
+# filter down to just mini-grids and controls
+df <- df %>% filter(type %in% c("mini-grid", "built"))
+df$id <- as.integer(df$id)
+
+# run the model
+# https://bcallaway11.github.io/did/reference/att_gt.html
+did <- att_gt(
+    yname = "image_value", # outcome variable
+    tname = "time_period", # time variable
+    idname = "id", # id variable
+    gname = "group", # first treatment period variable
+    data = df, # data
+    control_group = "nevertreated", # set the comparison group as either "never treated" or "not yet treated"
+)
+
+# aggregate the results
+did_agg <- aggte(
+    did,
+    type = "dynamic", 
+    na.rm = TRUE
+)
+
+# view the results
+summary(did_agg)
+
+# plot group-time ATTs 
+# set font size to 16pt
+did_agg_plt <- ggdid(did_agg, xgap = 6) +
+    labs(
+        title = "ATT of Mini-Grid Commissioning on Nighttime Brightness for Mini-Grid vs Built Sites Minus Ocean Values",
+        x = "Months Since Commissioning", 
+        y = "Change in Brightness") +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))+
+    theme(text = element_text(size = 20, family = "serif")) +
+    theme(legend.position = "bottom")
+
+print(did_agg_plt)
+ggsave("figures/dark_sl/did_minus_ocean_minigrid_vs_built.png", did_agg_plt, width = 16, height = 8, units = "in", dpi = 300)
+rm(df, did, did_agg, did_agg_plt)
+```
+## Warnings
+Warning messages:
+1: In pre_process_did(yname = yname, tname = tname, idname = idname,  :
+  Be aware that there are some small groups in your dataset.
+  Check groups: 67,69,72,73,75,77,78,82,86,89,90,91,98,100,101,102,104.
+2: In att_gt(yname = "image_value", tname = "time_period", idname = "id",  :
+  Not returning pre-test Wald statistic due to singular covariance matrix
+3: In att_gt(yname = "image_value", tname = "time_period", idname = "id",  :
+  Simultaneous critical value is arguably `too large' to be realible. 
+  This usually happens when number of observations per group is small 
+  and/or there is no much variation in outcomes.
+
+## Results
+
+1. Mini-Grid vs. Control with Ocean Minus DiD
+    ATT    Std. Error     [ 95%  Conf. Int.] 
+ 0.0186        0.0138    -0.0086      0.0457  # std error + conf int varies slightly each time
+
+2. Mini-Grid vs. Rural with Ocean Minus DiD
+    ATT    Std. Error     [ 95%  Conf. Int.] 
+ 0.0159        0.0142    -0.0119      0.0438
+
+3. Mini-Grid vs. Urban with Ocean Minus DiD
+     ATT    Std. Error     [ 95%  Conf. Int.]  
+ -0.3882        0.0877    -0.5601     -0.2162 *
+
+## Prior Results
+Control Sites                   & 0.0186   & 0.014   & [-0.0089, 0.0461] \\
+Control + Not-Yet-Treated Sites & 0.018    & 0.0137  & [-0.0089, 0.0448] \\
+Rural Areas                     & 0.0159   & 0.0143  & [-0.0122, 0.044] \\
+Ocean Areas                     & 0.0091   & 0.0147  & [-0.0197, 0.038] \\
+Built Areas                     & -0.3882  & 0.0902  & [-0.565, -0.2113] * \\
+
+## Reformatted New Results like Prior Results
+Control Sites                   & 0.0186   & 0.0138  & [-0.0086, 0.0457] \\
+Rural Areas                     & 0.0159   & 0.0142  & [-0.0119, 0.0438] \\
+Urban Areas                     & -0.3882  & 0.0877  & [-0.5601, -0.2162] * \\
+
+>> Nearly identical results to prior results. Ocean Minus DiD does not change the results of the DiD.
