@@ -1,0 +1,194 @@
+# Moving Averages DiD
+The goal of this notebook is to rerun DiD using moving averages instead of raw values to see if the results change.
+
+## Load Libraries
+```{r}
+library(tidyverse)
+library(did)
+library(zoo)
+```
+
+## SL-Level Analysis
+```{r}
+# read in dark_sl df for csdid
+dark_sl <- readRDS("data/dark_sl/all_df_for_csdind.rds")
+# glimpse(dark_sl)
+
+calculate_sma <- function(df) {
+  df %>%
+    group_by(id) %>%
+    arrange(image_date) %>%
+    mutate(
+        sma6 = rollapply(image_value, width = 6, FUN = mean, fill = NA, align = 'right'),
+        sma12 = rollapply(image_value, width = 12, FUN = mean, fill = NA, align = 'right'),
+        sma24 = rollapply(image_value, width = 24, FUN = mean, fill = NA, align = 'right'),
+        ) %>%
+    ungroup()
+}
+
+# calculate the moving average
+dark_sl <- calculate_sma(dark_sl)
+
+# calculate the mean brightness at each image_date by type
+sl_means <- dark_sl %>%
+    group_by(image_date, type) %>%
+    summarise(
+        mean_sma6 = mean(sma6),
+        median_sma6 = median(sma6),
+        mean_sma12 = mean(sma12),
+        median_sma12 = median(sma12),
+        mean_sma24 = mean(sma24),
+        median_sma24 = median(sma24),
+        mean_value = mean(image_value),
+        median_value = median(image_value),
+        n = n()
+    )
+
+# visualize
+ggplot(sl_means) +
+    # visualize image_values with this, faded line
+    geom_line(aes(x = image_date, y = median_value, color = type, alpha = 0.7), linetype = 2) +
+    # add sma with thicker line
+    geom_line(aes(x = image_date, y = median_sma6, color = type), size = 0.5, alpha = 0.5) +
+    geom_line(aes(x = image_date, y = median_sma12, color = type), size = 1, alpha = 0.7) +
+    geom_line(aes(x = image_date, y = median_sma24, color = type), size = 2, alpha = 1.0) +
+    labs(title = "Median Brightness by Site Type with SMA in Sierra Leone (N = 0, 6, 24)",
+         x = "Image Date",
+         y = "Median Brightness (SMA)") +
+    theme_bw() +
+    theme(text = element_text(size = 20, family = "serif") , legend.position = "bottom")
+ggsave("figures/dark_sl/agg_medians_by_type_sma_6_12_24.png", width = 12, height = 8)
+
+# export sma df
+saveRDS(dark_sl, "data/dark_sl/all_df_for_csdind_sma.rds")
+rm(calculate_sma, sl_means, dark_sl)
+```
+
+## Rerun DiD
+```{r}
+# read in data
+df <- readRDS("data/dark_sl/all_df_for_csdind_sma.rds")
+
+control_group <- "ocean"
+n <- "24"
+
+# filter down to just mini-grids and controls
+df <- df %>% filter(type %in% c("mini-grid", control_group))
+df$id <- as.integer(df$id)
+
+# run the model
+# https://bcallaway11.github.io/did/reference/att_gt.html
+did <- att_gt(
+    yname = paste0("sma",n), # outcome variable, now SMA instead of "image_value"
+    tname = "time_period", # time variable
+    idname = "id", # id variable
+    gname = "group", # first treatment period variable
+    data = df, # data
+    control_group = "nevertreated", # set the comparison group as either "never treated" or "not yet treated"
+)
+
+# aggregate the results
+did_agg <- aggte(
+    did,
+    type = "dynamic", 
+    na.rm = TRUE
+)
+
+# view the results
+summary(did_agg)
+
+# plot group-time ATTs 
+# set font size to 16pt
+did_agg_plt <- ggdid(did_agg, xgap = 6) +
+    labs(
+        title = paste0("ATT of Electrification on Brightness for Mini-Grid vs. ",str_to_title(control_group)," Control Sites with SMA N=",n),
+        x = "Months Since Commissioning", 
+        y = "Change in Nighttime Brightness") +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))+
+    theme(text = element_text(size = 20, family = "serif")) +
+    theme(legend.position = "bottom")
+print(did_agg_plt)
+
+ggsave(paste0("figures/dark_sl/did_sma_n",n,"_minigrid_vs_",control_group,".png"), did_agg_plt, width = 12, height = 6, units = "in", dpi = 300)
+rm(df, did, did_agg, did_agg_plt, control_group, n)
+```
+
+
+## Results
+N=12 =========================================
+1. Mini-Grid vs. Control
+     ATT    Std. Error     [ 95%  Conf. Int.] 
+ -0.002         0.009    -0.0197      0.0158 
+
+2. Mini-Grid vs. Rural
+    ATT    Std. Error     [ 95%  Conf. Int.] 
+ 0.0015          0.01     -0.018       0.021  # visually almost the same trend
+
+3. Mini-Grid vs. Built
+     ATT    Std. Error     [ 95%  Conf. Int.]  
+ -0.3684        0.0749    -0.5151     -0.2217 * 
+
+4. Mini-Grid vs Ocean
+     ATT    Std. Error     [ 95%  Conf. Int.] 
+ -0.0084        0.0084    -0.0248       0.008 
+
+
+N=24 =========================================
+1. Mini-Grid vs. Control
+     ATT    Std. Error     [ 95%  Conf. Int.] 
+ -0.0049         0.007    -0.0185      0.0087 
+
+2. Mini-Grid vs. Rural
+    ATT    Std. Error     [ 95%  Conf. Int.] 
+  0.0017        0.0076    -0.0132      0.0166 
+
+
+3. Mini-Grid vs. Built
+     ATT    Std. Error     [ 95%  Conf. Int.] 
+  -0.3715        0.0764    -0.5212     -0.2218 *
+
+     
+4. Mini-Grid vs Ocean
+     ATT    Std. Error     [ 95%  Conf. Int.] 
+-0.0064        0.0062    -0.0185      0.0058 
+
+
+N=6 =========================================
+1. Mini-Grid vs. Control
+     ATT    Std. Error     [ 95%  Conf. Int.] 
+ -0.0005        0.0112    -0.0224      0.0214 
+
+2. Mini-Grid vs. Rural
+    ATT    Std. Error     [ 95%  Conf. Int.] 
+  0.0031        0.0118      -0.02      0.0262 
+
+3. Mini-Grid vs. Built
+     ATT    Std. Error     [ 95%  Conf. Int.] 
+ -0.3436        0.0768    -0.4942      -0.193 *
+
+4. Mini-Grid vs Ocean
+     ATT    Std. Error     [ 95%  Conf. Int.]
+-0.0133        0.0117    -0.0364      0.0097 
+
+## Prior Results
+Control Sites                   & 0.0186   & 0.014   & [-0.0089, 0.0461] \\
+Rural Areas                     & 0.0159   & 0.0143  & [-0.0122, 0.044] \\
+Ocean Areas                     & 0.0091   & 0.0147  & [-0.0197, 0.038] \\
+Built Areas                     & -0.3882  & 0.0902  & [-0.565, -0.2113] * \\
+
+## Reformatted New Results like Prior Results
+
+>>
+
+## Warnings
+Warning messages:
+1: In pre_process_did(yname = yname, tname = tname, idname = idname,  :
+  Be aware that there are some small groups in your dataset.
+  Check groups: 67,69,72,73,75,77,78,82,86,89,90,91,98,100,101,102,104.
+2: In att_gt(yname = "image_value", tname = "time_period", idname = "id",  :
+  Not returning pre-test Wald statistic due to singular covariance matrix
+3: In att_gt(yname = "image_value", tname = "time_period", idname = "id",  :
+  Simultaneous critical value is arguably `too large' to be realible. 
+  This usually happens when number of observations per group is small 
+  and/or there is no much variation in outcomes.
