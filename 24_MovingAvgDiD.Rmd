@@ -8,11 +8,11 @@ library(did)
 library(zoo)
 ```
 
-## SL-Level Analysis
+## Define SMA Functions & Globals
 ```{r}
-# read in dark_sl df for csdid
-dark_sl <- readRDS("data/dark_sl/all_df_for_csdind.rds")
-# glimpse(dark_sl)
+# data folder
+data_folder <- "data/dark_africa/"
+figures_folder <- "figures/dark_africa/"
 
 calculate_sma <- function(df) {
   df %>%
@@ -26,96 +26,186 @@ calculate_sma <- function(df) {
     ungroup()
 }
 
-# calculate the moving average
-dark_sl <- calculate_sma(dark_sl)
+# rewrite the above as a function
+calculate_means_by_type <- function(df) {
+    df %>%
+        group_by(image_date, type) %>%
+        summarise(
+            mean_sma6 = mean(sma6),
+            median_sma6 = median(sma6),
+            mean_sma12 = mean(sma12),
+            median_sma12 = median(sma12),
+            mean_sma24 = mean(sma24),
+            median_sma24 = median(sma24),
+            mean_value = mean(image_value),
+            median_value = median(image_value),
+            n = n()
+        )
+}
 
-# calculate the mean brightness at each image_date by type
-sl_means <- dark_sl %>%
-    group_by(image_date, type) %>%
-    summarise(
-        mean_sma6 = mean(sma6),
-        median_sma6 = median(sma6),
-        mean_sma12 = mean(sma12),
-        median_sma12 = median(sma12),
-        mean_sma24 = mean(sma24),
-        median_sma24 = median(sma24),
-        mean_value = mean(image_value),
-        median_value = median(image_value),
-        n = n()
-    )
-
-# visualize
-ggplot(sl_means) +
+# sma plot
+ggplot_sma <- function(df) {
+    ggplot(df) +
     # visualize image_values with this, faded line
     geom_line(aes(x = image_date, y = median_value, color = type, alpha = 0.7), linetype = 2) +
     # add sma with thicker line
-    geom_line(aes(x = image_date, y = median_sma6, color = type), size = 0.5, alpha = 0.5) +
-    geom_line(aes(x = image_date, y = median_sma12, color = type), size = 1, alpha = 0.7) +
-    geom_line(aes(x = image_date, y = median_sma24, color = type), size = 2, alpha = 1.0) +
-    labs(title = "Median Brightness by Site Type with SMA in Sierra Leone (N = 0, 6, 24)",
-         x = "Image Date",
-         y = "Median Brightness (SMA)") +
+    geom_line(aes(x = image_date, y = median_sma6, color = type), linewidth = 0.5, alpha = 0.5) +
+    geom_line(aes(x = image_date, y = median_sma12, color = type), linewidth = 1, alpha = 0.7) +
+    geom_line(aes(x = image_date, y = median_sma24, color = type), linewidth = 2, alpha = 1.0) +
+    labs(title = "Median Brightness by Site Type with SMA in Sierra Leone (N = 0, 6, 12, 24)",
+        x = "Image Date",
+        y = "Median Brightness (SMA)") +
     theme_bw() +
     theme(text = element_text(size = 20, family = "serif") , legend.position = "bottom")
-ggsave("figures/dark_sl/agg_medians_by_type_sma_6_12_24.png", width = 12, height = 8)
+}
 
-# export sma df
-saveRDS(dark_sl, "data/dark_sl/all_df_for_csdind_sma.rds")
-rm(calculate_sma, sl_means, dark_sl)
-```
+run_sma_did <- function(df, control_type, control_group, n) {
+    # filter down to just mini-grids and controls
+    df <- df %>% filter(type %in% c("mini-grid", control_type))
+    df$id <- as.integer(df$id)
 
-## Rerun DiD
-```{r}
-# read in data
-df <- readRDS("data/dark_sl/all_df_for_csdind_sma.rds")
+    # run the model
+    # https://bcallaway11.github.io/did/reference/att_gt.html
+    did <- att_gt(
+        yname = paste0("sma", n), # outcome variable, now SMA instead of "image_value"
+        tname = "time_period", # time variable
+        idname = "id", # id variable
+        gname = "group", # first treatment period variable
+        data = df, # data 
+        control_group = control_group, # set the comparison group as either "never treated" or "not yet treated"
+    )
 
-control_group <- "ocean"
-n <- "24"
+    # aggregate the results
+    did_agg <- aggte(
+        did,
+        type = "dynamic", 
+        na.rm = TRUE
+    )
+    # print and return results
+    summary(did_agg)
+    return (did_agg)
+}
 
-# filter down to just mini-grids and controls
-df <- df %>% filter(type %in% c("mini-grid", control_group))
-df$id <- as.integer(df$id)
-
-# run the model
-# https://bcallaway11.github.io/did/reference/att_gt.html
-did <- att_gt(
-    yname = paste0("sma",n), # outcome variable, now SMA instead of "image_value"
-    tname = "time_period", # time variable
-    idname = "id", # id variable
-    gname = "group", # first treatment period variable
-    data = df, # data
-    control_group = "nevertreated", # set the comparison group as either "never treated" or "not yet treated"
-)
-
-# aggregate the results
-did_agg <- aggte(
-    did,
-    type = "dynamic", 
-    na.rm = TRUE
-)
-
-# view the results
-summary(did_agg)
-
-# plot group-time ATTs 
-# set font size to 16pt
-did_agg_plt <- ggdid(did_agg, xgap = 6) +
+plot_sma_did <- function(did_agg, control_type, n) {
+    # plot group-time ATTs 
+    # set font size to 16pt
+    did_agg_plt <- ggdid(did_agg, xgap = 6) +
     labs(
-        title = paste0("ATT of Electrification on Brightness for Mini-Grid vs. ",str_to_title(control_group)," Control Sites with SMA N=",n),
+        title = paste0("ATT of Electrification on Brightness for Mini-Grid vs. ",str_to_title(control_type)," Control Sites with SMA N=",n),
         x = "Months Since Commissioning", 
         y = "Change in Nighttime Brightness") +
     theme_bw() +
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))+
     theme(text = element_text(size = 20, family = "serif")) +
     theme(legend.position = "bottom")
-print(did_agg_plt)
+    print(did_agg_plt)
+    return(did_agg_plt)
+}
+```
 
-ggsave(paste0("figures/dark_sl/did_sma_n",n,"_minigrid_vs_",control_group,".png"), did_agg_plt, width = 12, height = 6, units = "in", dpi = 300)
-rm(df, did, did_agg, did_agg_plt, control_group, n)
+## SMA Analysis
+```{r}
+# read in df for csdid
+df <- readRDS(paste0(data_folder, "africa_df_melt_clean_for_csdind.rds"))
+glimpse(df)
+
+# change type to mini-grid from minigrid to be consistent
+unique(df$type)
+df$type <- as.character(df$type)
+df$type <- ifelse(df$type == "minigrid", "mini-grid", df$type)
+df$type <- ifelse(df$type == "jungle", "rainforest", df$type)
+df$type <- as.factor(df$type)
+unique(df$type)
+
+# calculate the moving average
+df <- calculate_sma(df)
+
+# calculate the mean brightness at each image_date by type
+df_means <- calculate_means_by_type(df)
+
+# visualize
+ggplot_sma(df_means %>% filter(type != "built"))
+ggsave(paste0(figures_folder, "agg_medians_by_type_sma_6_12_24.png"), width = 12, height = 8)
+
+# export sma df
+saveRDS(df, paste0(data_folder, "africa_df_melt_clean_for_csdind_sma.rds"))
+
+# clean up variables
+rm(df, df_means)
+rm(calculate_sma, calculate_means_by_type, ggplot_sma)
+```
+
+## Rerun DiD
+```{r}
+# read in data
+df <- readRDS(paste0(data_folder, "africa_df_melt_clean_for_csdind_sma.rds"))
+
+# set parameters for did
+control_type <- "mini-grid"
+control_group <- "notyettreated"
+n <- "6"
+
+# run did
+did_agg <- run_sma_did(df, control_type, control_group, n)
+
+# plot the results
+did_agg_plt <- plot_sma_did(did_agg, control_type, n)
+ggsave(paste0(figures_folder, "figures/dark_sl/did_sma_n", n, "_minigrid_vs_", control_type, ".png"), did_agg_plt, width = 12, height = 6, units = "in", dpi = 300)
+
+# clean up variables
+rm(df, did, did_agg, did_agg_plt, control_type, control_group, n)
+rm(run_sma_did, plot_sma_did)
 ```
 
 
 ## Results
+
+### All Africa Results
+N = 24 =========================================
+1. Mini-Grid vs. Self
+     ATT    Std. Error     [ 95%  Conf. Int.] 
+ -0.1052        0.1123    -0.3253      0.1149 
+
+2. Mini-Grid vs. Rural
+
+3. Mini-Grid vs. Built
+
+4. Mini-Grid vs. Ocean
+
+5. Mini-Grid vs. Desert
+
+6. Mini-Grid vs. Rainforest
+
+N = 12 =========================================
+1. Mini-Grid vs. Self
+     ATT    Std. Error     [ 95%  Conf. Int.] 
+ -0.1551        0.1536    -0.4562       0.146 
+
+2. Mini-Grid vs. Rural
+
+3. Mini-Grid vs. Built
+
+4. Mini-Grid vs. Ocean
+
+5. Mini-Grid vs. Desert
+
+6. Mini-Grid vs. Rainforest
+
+N = 6 =========================================
+1. Mini-Grid vs. Self
+
+2. Mini-Grid vs. Rural
+
+3. Mini-Grid vs. Built
+
+4. Mini-Grid vs. Ocean
+
+5. Mini-Grid vs. Desert
+
+6. Mini-Grid vs. Rainforest
+
+
+### Sierra Leone
 N=12 =========================================
 1. Mini-Grid vs. Control
      ATT    Std. Error     [ 95%  Conf. Int.] 
@@ -171,15 +261,17 @@ N=6 =========================================
      ATT    Std. Error     [ 95%  Conf. Int.]
 -0.0133        0.0117    -0.0364      0.0097 
 
-## Prior Results
+#### Prior Results
 Control Sites                   & 0.0186   & 0.014   & [-0.0089, 0.0461] \\
 Rural Areas                     & 0.0159   & 0.0143  & [-0.0122, 0.044] \\
 Ocean Areas                     & 0.0091   & 0.0147  & [-0.0197, 0.038] \\
 Built Areas                     & -0.3882  & 0.0902  & [-0.565, -0.2113] * \\
 
-## Reformatted New Results like Prior Results
+##### Reformatted New Results like Prior Results
 
 >>
+
+
 
 ## Warnings
 Warning messages:
