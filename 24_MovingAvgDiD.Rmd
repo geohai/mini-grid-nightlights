@@ -141,8 +141,8 @@ rm(calculate_sma, calculate_means_by_type, ggplot_sma)
 df <- readRDS(paste0(data_folder, "africa_df_melt_clean_for_csdind_sma.rds"))
 
 # set parameters for did
-control_type <- "mini-grid"
-control_group <- "notyettreated"
+control_type <- "rainforest"
+control_group <- "nevertreated"
 n <- "6"
 
 # run did
@@ -153,8 +153,7 @@ did_agg_plt <- plot_sma_did(did_agg, control_type, n)
 ggsave(paste0(figures_folder, "figures/dark_sl/did_sma_n", n, "_minigrid_vs_", control_type, ".png"), did_agg_plt, width = 12, height = 6, units = "in", dpi = 300)
 
 # clean up variables
-rm(df, did, did_agg, did_agg_plt, control_type, control_group, n)
-rm(run_sma_did, plot_sma_did)
+rm(df, did_agg, did_agg_plt, control_type, control_group, n)
 ```
 
 
@@ -162,104 +161,48 @@ rm(run_sma_did, plot_sma_did)
 
 ### All Africa Results
 N = 24 =========================================
-1. Mini-Grid vs. Self
-     ATT    Std. Error     [ 95%  Conf. Int.] 
- -0.1052        0.1123    -0.3253      0.1149 
-
-2. Mini-Grid vs. Rural
-
-3. Mini-Grid vs. Built
-
-4. Mini-Grid vs. Ocean
-
-5. Mini-Grid vs. Desert
-
-6. Mini-Grid vs. Rainforest
+1. Mini-Grid vs. Self  -0.1052        0.1123    -0.3253      0.1149 
+2. Mini-Grid vs. Rural 0.0294        0.0172    -0.0044      0.0631 
+3. Mini-Grid vs. Built  -0.754        0.0928    -0.9358     -0.5722 *
+4. Mini-Grid vs. Ocean  0.0217        0.0183    -0.0141      0.0575
+5. Mini-Grid vs. Desert 0.0219        0.0182    -0.0137      0.0575 
+6. Mini-Grid vs. Rainforest  0.048        0.0176     0.0135      0.0826 *
 
 N = 12 =========================================
-1. Mini-Grid vs. Self
-     ATT    Std. Error     [ 95%  Conf. Int.] 
- -0.1551        0.1536    -0.4562       0.146 
-
-2. Mini-Grid vs. Rural
-
-3. Mini-Grid vs. Built
-
-4. Mini-Grid vs. Ocean
-
-5. Mini-Grid vs. Desert
-
-6. Mini-Grid vs. Rainforest
+1. Mini-Grid vs. Self  -0.1551        0.1536    -0.4562       0.146 
+2. Mini-Grid vs. Rural  0.0472        0.0171     0.0137      0.0807 *
+3. Mini-Grid vs. Built  -0.8464        0.0969    -1.0363     -0.6566 *
+4. Mini-Grid vs. Ocean  0.0301        0.0154     -1e-04      0.0602 
+5. Mini-Grid vs. Desert  0.0386        0.0163     0.0066      0.0705 *
+6. Mini-Grid vs. Rainforest  0.0627         0.016     0.0314       0.094 *
 
 N = 6 =========================================
-1. Mini-Grid vs. Self
-
-2. Mini-Grid vs. Rural
-
-3. Mini-Grid vs. Built
-
-4. Mini-Grid vs. Ocean
-
-5. Mini-Grid vs. Desert
-
-6. Mini-Grid vs. Rainforest
+1. Mini-Grid vs. Self  -0.0551        0.0653    -0.1832      0.0729 
+2. Mini-Grid vs. Rural  0.0486        0.0189     0.0116      0.0856 *
+3. Mini-Grid vs. Built  -0.9472        0.1131    -1.1689     -0.7255 *
+4. Mini-Grid vs. Ocean  0.0284        0.0179    -0.0067      0.0635
+5. Mini-Grid vs. Desert  0.0319        0.0191    -0.0054      0.0693
+6. Mini-Grid vs. Rainforest  0.0693         0.018     0.0339      0.1046 *
 
 
 ### Sierra Leone
 N=12 =========================================
-1. Mini-Grid vs. Control
-     ATT    Std. Error     [ 95%  Conf. Int.] 
- -0.002         0.009    -0.0197      0.0158 
-
-2. Mini-Grid vs. Rural
-    ATT    Std. Error     [ 95%  Conf. Int.] 
- 0.0015          0.01     -0.018       0.021  # visually almost the same trend
-
-3. Mini-Grid vs. Built
-     ATT    Std. Error     [ 95%  Conf. Int.]  
- -0.3684        0.0749    -0.5151     -0.2217 * 
-
-4. Mini-Grid vs Ocean
-     ATT    Std. Error     [ 95%  Conf. Int.] 
- -0.0084        0.0084    -0.0248       0.008 
-
+1. Mini-Grid vs. Control  -0.002         0.009    -0.0197      0.0158 
+2. Mini-Grid vs. Rural  0.0015          0.01     -0.018       0.021  # visually almost the same trend
+3. Mini-Grid vs. Built  -0.3684        0.0749    -0.5151     -0.2217 * 
+4. Mini-Grid vs Ocean  -0.0084        0.0084    -0.0248       0.008 
 
 N=24 =========================================
-1. Mini-Grid vs. Control
-     ATT    Std. Error     [ 95%  Conf. Int.] 
- -0.0049         0.007    -0.0185      0.0087 
-
-2. Mini-Grid vs. Rural
-    ATT    Std. Error     [ 95%  Conf. Int.] 
-  0.0017        0.0076    -0.0132      0.0166 
-
-
-3. Mini-Grid vs. Built
-     ATT    Std. Error     [ 95%  Conf. Int.] 
-  -0.3715        0.0764    -0.5212     -0.2218 *
-
-     
-4. Mini-Grid vs Ocean
-     ATT    Std. Error     [ 95%  Conf. Int.] 
--0.0064        0.0062    -0.0185      0.0058 
-
+1. Mini-Grid vs. Control  -0.0049         0.007    -0.0185      0.0087 
+2. Mini-Grid vs. Rural   0.0017        0.0076    -0.0132      0.0166 
+3. Mini-Grid vs. Built   -0.3715        0.0764    -0.5212     -0.2218 *
+4. Mini-Grid vs Ocean -0.0064        0.0062    -0.0185      0.0058 
 
 N=6 =========================================
-1. Mini-Grid vs. Control
-     ATT    Std. Error     [ 95%  Conf. Int.] 
- -0.0005        0.0112    -0.0224      0.0214 
-
-2. Mini-Grid vs. Rural
-    ATT    Std. Error     [ 95%  Conf. Int.] 
-  0.0031        0.0118      -0.02      0.0262 
-
-3. Mini-Grid vs. Built
-     ATT    Std. Error     [ 95%  Conf. Int.] 
- -0.3436        0.0768    -0.4942      -0.193 *
-
-4. Mini-Grid vs Ocean
-     ATT    Std. Error     [ 95%  Conf. Int.]
--0.0133        0.0117    -0.0364      0.0097 
+1. Mini-Grid vs. Control  -0.0005        0.0112    -0.0224      0.0214 
+2. Mini-Grid vs. Rural   0.0031        0.0118      -0.02      0.0262 
+3. Mini-Grid vs. Built  -0.3436        0.0768    -0.4942      -0.193 *
+4. Mini-Grid vs Ocean -0.0133        0.0117    -0.0364      0.0097 
 
 #### Prior Results
 Control Sites                   & 0.0186   & 0.014   & [-0.0089, 0.0461] \\
