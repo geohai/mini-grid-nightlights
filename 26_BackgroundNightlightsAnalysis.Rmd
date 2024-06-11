@@ -1,0 +1,300 @@
+# Background Nightlights Analysis
+
+## Load Packages
+```{r}
+library(tidyverse)
+library(sf)
+```
+
+## Read in the Dark Data & Combine
+```{r}
+# read in data that's in geojson format to sf
+globe <- st_read("data/dark_bg/globe_pts_lights.geo.json")
+ocean <- st_read("data/dark_bg/ocean_pts_lights.geo.json")
+land <- st_read("data/dark_bg/land_pts_lights.geo.json")
+
+# glimpse(globe)
+# glimpse(ocean)
+# glimpse(land)
+
+# add a column for the type of data
+globe$type <- "globe"
+ocean$type <- "ocean"
+land$type <- "land"
+ocean$Map <- 80
+globe$Map <- NA
+
+# drop the extra columns
+ocean <- ocean %>% select(-SST_AVE, -SST_QA_flag)
+
+# combine the data
+nightlights <- rbind(globe, ocean, land)
+
+glimpse(nightlights)
+
+# drop "_avg_rad" from each column name that has it
+names(nightlights) <- str_replace_all(names(nightlights), "_avg_rad", "")
+
+# make ID a unique identifier
+nightlights$id <- 1:nrow(nightlights)
+
+# export as RDS
+saveRDS(nightlights, "data/dark_bg/nightlights.rds")
+```
+
+## Melt Dataframe
+```{r}
+nightlights <- readRDS("data/dark_bg/nightlights.rds")
+
+# melt the data to long format, column headers are the dates, keep "type", "Map", and "geometry", and "id" 
+nightlights_melt <- nightlights %>%
+    pivot_longer(cols = c(-id, -Map, -geometry, -type), names_to = "date", values_to = "value")
+
+
+# drop the "X" preceding all of the date values
+nightlights_melt$date <- str_remove(nightlights_melt$date, "X")
+
+# convert date character strings in format 20200304 to date objects
+nightlights_melt$date <- as.Date(nightlights_melt$date, format = "%Y%m%d")
+
+# convert id, type, and Map to factors
+nightlights_melt$id <- as.factor(nightlights_melt$id)
+nightlights_melt$type <- as.factor(nightlights_melt$type)
+nightlights_melt$Map <- as.factor(nightlights_melt$Map)
+
+glimpse(nightlights_melt)
+# export
+saveRDS(nightlights_melt, "data/dark_bg/nightlights_melt.rds")
+```
+
+## Analyze Data
+```{r}
+nightlights_melt <- readRDS("data/dark_bg/nightlights_melt.rds")
+
+# plot the data by type and date using geom_smooth
+nightlights_melt %>%
+    ggplot(aes(x = date, y = value, color = type)) +
+    geom_smooth() +
+    facet_wrap(~type, scales = "free_y") +
+    theme_bw() +
+    labs(title = "Nightlights by Type",
+         x = "Date",
+         y = "Nightlights") +
+    theme(legend.position = "none") +
+    # serif, 20pt font
+    theme(text = element_text(family = "serif", size = 20))
+
+# export this plot
+ggsave("figures/dark_bg/nightlights_by_type_geom_smooth.png", width = 10, height = 6, units = "in")
+```
+
+## Pull in the SL and Africa Data
+```{r}
+nightlights_melt <- readRDS("data/dark_bg/nightlights_melt.rds")
+
+# filter out just the ocean data
+dark_globe <- nightlights_melt %>%
+    filter(type == "ocean")
+
+# drop geometry column
+dark_globe <- dark_globe %>% st_drop_geometry()
+
+# read in dark_sl data
+dark_sl <- readRDS("data/dark_sl/all_df_melt.rds")
+dark_africa <- readRDS("data/dark_africa/africa_df_melt.rds")
+
+# filter out type == "built"
+dark_sl <- dark_sl %>%
+    filter(type != "built")
+
+dark_africa <- dark_africa %>%
+    filter(type != "built")
+
+# prepare to combine
+dark_sl$scale <- "sl"
+dark_africa$scale <- "africa"
+dark_globe$scale <- "globe"
+
+# rename dark_africa type "minigrid" to "mini-grid"
+dark_africa$type <- str_replace_all(dark_africa$type, "minigrid", "mini-grid")
+dark_africa$type <- str_replace_all(dark_africa$type, "jungle", "rainforest")
+
+
+dark_sl <- dark_sl %>%
+    select(type, id, image_date, image_value, scale)
+
+dark_africa <- dark_africa %>%
+    select(type, id, image_date, image_value, scale)
+
+dark_globe <- dark_globe %>%
+    select(type, id, date, value, scale)
+
+# rename the columns to match
+names(dark_sl) <- c("type", "id", "date", "value", "scale")
+names(dark_africa) <- c("type", "id", "date", "value", "scale")
+
+
+# combine the data
+df <- rbind(dark_sl, dark_africa, dark_globe)
+df$id <- paste0(df$scale, df$id)
+df$scale_type <- as.factor(paste0(df$scale, "_", df$type))
+
+# export as RDS
+saveRDS(df, "data/dark_bg/nightlights_by_scale_type.rds")
+```
+
+## Plot Data
+```{r}
+df <- readRDS("data/dark_bg/nightlights_by_scale_type.rds")
+
+# plot the data by scale_type and date using geom_smooth
+df %>%
+    ggplot(aes(x = date, y = value, color = scale_type)) +
+    geom_smooth() +
+    theme_bw() +
+    labs(title = "Nightlights by Scale and Type",
+         x = "Date",
+         y = "Nightlights") +
+    theme(text = element_text(family = "serif", size = 20), legend.position = "bottom")
+
+# export this plot
+ggsave("figures/dark_bg/nightlights_by_scale_type_geom_smooth.png", width = 10, height = 10, units = "in")
+
+
+
+# redo plot with several filtered out
+df %>%
+    filter(scale_type != "africa_mini-grid") %>%
+    ggplot(aes(x = date, y = value, color = scale_type)) +
+    geom_smooth() +
+    theme_bw() +
+    labs(title = "Nightlights by Scale and Type",
+         x = "Date",
+         y = "Nightlights") +
+    theme(text = element_text(family = "serif", size = 20), legend.position = "bottom")
+
+# export this plot
+ggsave("figures/dark_bg/nightlights_by_scale_type_geom_smooth_filtered.png", width = 12, height = 8, units = "in")
+
+# redo without sierra leone types
+df %>%
+    filter(!scale_type %in% c("sl_mini-grid", "sl_control", "sl_ocean", "sl_rural", "africa_mini-grid")) %>%
+    ggplot(aes(x = date, y = value, color = scale_type)) +
+    geom_smooth() +
+    theme_bw() +
+    labs(title = "Nightlights by Scale and Type",
+         x = "Date",
+         y = "Nightlights") +
+    theme(text = element_text(family = "serif", size = 20), legend.position = "bottom")
+
+# export this plot
+ggsave("figures/dark_bg/nightlights_by_scale_type_geom_smooth_africa.png", width = 12, height = 8, units = "in")
+```
+
+## Calculate the Global Ocean Means
+```{r}
+# read in the unmelted data
+nightlights <- readRDS("data/dark_bg/nightlights.rds") 
+df <- nightlights
+glimpse(df)
+
+# calculate the summary stats of each column by type
+df_means <- df %>%
+    st_drop_geometry() %>%
+    select(-id, -Map) %>%
+    group_by(type) %>%
+    summarise(across(everything(), mean, na.rm = TRUE))
+
+df_medians <- df %>%
+    st_drop_geometry() %>%
+    select(-id, -Map) %>%
+    group_by(type) %>%
+    summarise(across(everything(), median, na.rm = TRUE))
+
+glimpse(df_means)
+glimpse(df_medians)
+
+# melt the data
+df_means_melt <- df_means %>%
+    pivot_longer(cols = c(-type), names_to = "date", values_to = "mean")
+df_medians_melt <- df_medians %>%
+    pivot_longer(cols = c(-type), names_to = "date", values_to = "median")
+# join the two on "date" and "type"
+df_melt <- left_join(df_means_melt, df_medians_melt, by = c("date", "type"))
+
+# convert date character strings in format X20200304 to date objects
+df_melt$date <- as.Date(str_remove(df_melt$date, "X"), format = "%Y%m%d")
+
+glimpse(df_melt)
+
+# export as RDS
+saveRDS(df_melt, "data/dark_bg/nightlights_means_medians.rds")
+# export as csv
+write_csv(df_melt, "data/dark_bg/nightlights_means_medians.csv")
+```
+
+## Plot Global Means and Medians
+```{r}
+df_melt <- readRDS("data/dark_bg/nightlights_means_medians.rds")
+
+# plot the data by type and date using geom_line
+df_melt %>%
+    ggplot(aes(x = date, y = mean, color = type)) +
+    geom_line() +
+    geom_line(aes(y = median), linetype = "dashed") +
+    theme_bw() +
+    labs(title = "Nightlights by Type with Means (solid) and Medians (dashed)",
+         x = "Date",
+         y = "Nightlights") +
+    theme(text = element_text(family = "serif", size = 20), legend.position = "bottom")
+
+# export this plot
+ggsave("figures/dark_bg/nightlights_by_type_means_medians.png", width = 10, height = 6, units = "in")
+
+# plot just the medians
+df_melt %>%
+    ggplot(aes(x = date, y = median, color = type)) +
+    geom_line() +
+    theme_bw() +
+    labs(title = "Nightlights by Type with Medians",
+         x = "Date",
+         y = "Nightlights") +
+    theme(text = element_text(family = "serif", size = 20), legend.position = "bottom")
+
+# export this plot
+ggsave("figures/dark_bg/nightlights_by_type_medians.png", width = 10, height = 6, units = "in")
+
+```
+
+## Replot the Data Subtracted the Global Ocean Medians
+```{r}
+df <- readRDS("data/dark_bg/nightlights_by_scale_type.rds")
+global_means <- readRDS("data/dark_bg/nightlights_means_medians.rds")
+glimpse(global_means)
+# keep just ocean and means from global_means
+global_means <- global_means %>%
+    filter(type == "ocean") %>%
+    select(date, mean)
+
+# join the two on "date"
+df <- left_join(df, global_means, by = "date")
+
+glimpse(df)
+
+# subtract the global ocean means from the values
+df$value_norm <- df$value - df$mean
+
+# plot the data by scale_type and date using geom_smooth
+df %>%
+    filter(!scale_type %in% c("africa_mini-grid")) %>%
+    ggplot(aes(x = date, y = value_norm, color = scale_type)) +
+    geom_smooth() +
+    theme_bw() +
+    labs(title = "Nightlights by Scale and Type with Global Ocean Medians Subtracted",
+         x = "Date",
+         y = "Nightlights") +
+    theme(text = element_text(family = "serif", size = 20), legend.position = "bottom")
+
+# export this plot
+ggsave("figures/dark_bg/nightlights_by_scale_type_geom_smooth_global_ocean_medians_subtracted.png", width = 12, height = 8, units = "in")
+```
