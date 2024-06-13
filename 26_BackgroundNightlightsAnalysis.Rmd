@@ -308,3 +308,17 @@ df %>%
 # export this plot
 ggsave("figures/dark_bg/nightlights_by_scale_type_geom_smooth_global_ocean_medians_subtracted.png", width = 12, height = 8, units = "in")
 ```
+
+## Print Median Values for Ocean Background
+```{r}
+# read in global means
+global_means <- readRDS("data/dark_bg/nightlights_means_medians.rds")
+
+# keep just ocean type from global means
+global_means <- global_means %>%
+    filter(type == "ocean") %>%
+    select(date, median, mean)
+
+# print the entire df for median and mean values
+print(global_means, n=121)
+```

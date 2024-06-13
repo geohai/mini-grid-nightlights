@@ -52,7 +52,7 @@ ggplot_sma <- function(df) {
     geom_line(aes(x = image_date, y = median_sma6, color = type), linewidth = 0.5, alpha = 0.5) +
     geom_line(aes(x = image_date, y = median_sma12, color = type), linewidth = 1, alpha = 0.7) +
     geom_line(aes(x = image_date, y = median_sma24, color = type), linewidth = 2, alpha = 1.0) +
-    labs(title = "Median Brightness by Site Type with SMA in Sierra Leone (N = 0, 6, 12, 24)",
+    labs(title = "Median Brightness by Site Type with SMA (N = 1, 6, 12, 24)",
         x = "Image Date",
         y = "Median Brightness (SMA)") +
     theme_bw() +
