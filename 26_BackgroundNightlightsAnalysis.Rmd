@@ -233,6 +233,16 @@ saveRDS(df_melt, "data/dark_bg/nightlights_means_medians.rds")
 write_csv(df_melt, "data/dark_bg/nightlights_means_medians.csv")
 ```
 
+## Summary Table
+```{r}
+df <- readRDS("data/dark_bg/nightlights_means_medians.rds")
+
+# create a summary table 
+df_sum <- df %>% pivot_wider(names_from = type, values_from = c(mean, median))
+
+summary(df_sum)
+```
+
 ## Plot Global Means and Medians
 ```{r}
 df_melt <- readRDS("data/dark_bg/nightlights_means_medians.rds")

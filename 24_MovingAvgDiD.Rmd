@@ -160,61 +160,155 @@ rm(df, did_agg, did_agg_plt, control_type, control_group, n)
 ## Results
 
 ### All Africa Results
+Column Names:  ATT    Std. Error     [ 95%  Conf. Int.] 
 N = 24 =========================================
-1. Mini-Grid vs. Self  -0.1052        0.1123    -0.3253      0.1149 
-2. Mini-Grid vs. Rural 0.0294        0.0172    -0.0044      0.0631 
-3. Mini-Grid vs. Built  -0.754        0.0928    -0.9358     -0.5722 *
-4. Mini-Grid vs. Ocean  0.0217        0.0183    -0.0141      0.0575
-5. Mini-Grid vs. Desert 0.0219        0.0182    -0.0137      0.0575 
-6. Mini-Grid vs. Rainforest  0.048        0.0176     0.0135      0.0826 *
+1. Mini-Grid vs. Self        -0.1052        0.1123    -0.3253      0.1149 
+2. Mini-Grid vs. Rural       0.0294        0.0172    -0.0044      0.0631 
+3. Mini-Grid vs. Built       -0.754        0.0928    -0.9358     -0.5722 *
+4. Mini-Grid vs. Ocean       0.0217        0.0183    -0.0141      0.0575
+5. Mini-Grid vs. Desert      0.0219        0.0182    -0.0137      0.0575 
+6. Mini-Grid vs. Rainforest  0.048          0.0176     0.0135      0.0826 *
 
 N = 12 =========================================
-1. Mini-Grid vs. Self  -0.1551        0.1536    -0.4562       0.146 
-2. Mini-Grid vs. Rural  0.0472        0.0171     0.0137      0.0807 *
-3. Mini-Grid vs. Built  -0.8464        0.0969    -1.0363     -0.6566 *
-4. Mini-Grid vs. Ocean  0.0301        0.0154     -1e-04      0.0602 
-5. Mini-Grid vs. Desert  0.0386        0.0163     0.0066      0.0705 *
-6. Mini-Grid vs. Rainforest  0.0627         0.016     0.0314       0.094 *
+1. Mini-Grid vs. Self         -0.1551        0.1536    -0.4562       0.146 
+2. Mini-Grid vs. Rural        0.0472        0.0171     0.0137      0.0807 *
+3. Mini-Grid vs. Built        -0.8464        0.0969    -1.0363     -0.6566 *
+4. Mini-Grid vs. Ocean        0.0301        0.0154     -1e-04      0.0602 
+5. Mini-Grid vs. Desert       0.0386        0.0163     0.0066      0.0705 *
+6. Mini-Grid vs. Rainforest   0.0627        0.016     0.0314       0.094 *
 
 N = 6 =========================================
-1. Mini-Grid vs. Self  -0.0551        0.0653    -0.1832      0.0729 
-2. Mini-Grid vs. Rural  0.0486        0.0189     0.0116      0.0856 *
-3. Mini-Grid vs. Built  -0.9472        0.1131    -1.1689     -0.7255 *
-4. Mini-Grid vs. Ocean  0.0284        0.0179    -0.0067      0.0635
-5. Mini-Grid vs. Desert  0.0319        0.0191    -0.0054      0.0693
-6. Mini-Grid vs. Rainforest  0.0693         0.018     0.0339      0.1046 *
+1. Mini-Grid vs. Self         -0.0551        0.0653    -0.1832      0.0729 
+2. Mini-Grid vs. Rural        0.0486        0.0189     0.0116      0.0856 *
+3. Mini-Grid vs. Built        -0.9472        0.1131    -1.1689     -0.7255 *
+4. Mini-Grid vs. Ocean        0.0284        0.0179    -0.0067      0.0635
+5. Mini-Grid vs. Desert       0.0319        0.0191    -0.0054      0.0693
+6. Mini-Grid vs. Rainforest   0.0693        0.018     0.0339      0.1046 *
 
+N = 1 =========================================
+1. Mini-Grid vs. Self          -0.0573        0.0741    -0.2026       0.088 
+2. Mini-Grid vs. Rural         0.0421         0.0263    -0.0095      0.0937 
+3. Mini-Grid vs. Built         -0.8998        0.1225      -1.14     -0.6596 *
+4. Mini-Grid vs. Ocean         -0.0129        0.0175    -0.0473      0.0215 
+5. Mini-Grid vs. Desert        0.034          0.0188    -0.0029       0.071 
+6. Mini-Grid vs. Rainforest    0.0232         0.018     -0.012      0.0584 
 
 ### Sierra Leone
-N=12 =========================================
-1. Mini-Grid vs. Control  -0.002         0.009    -0.0197      0.0158 
-2. Mini-Grid vs. Rural  0.0015          0.01     -0.018       0.021  # visually almost the same trend
-3. Mini-Grid vs. Built  -0.3684        0.0749    -0.5151     -0.2217 * 
-4. Mini-Grid vs Ocean  -0.0084        0.0084    -0.0248       0.008 
+Column Names:  ATT    Std. Error     [ 95%  Conf. Int.] 
+N = 24 =========================================
+1. Mini-Grid vs. Control     -0.0049         0.007    -0.0185      0.0087 
+2. Mini-Grid vs. Rural        0.0017        0.0076    -0.0132      0.0166 
+3. Mini-Grid vs. Built       -0.3715      0.0764    -0.5212     -0.2218 *
+4. Mini-Grid vs. Ocean       -0.0064        0.0062    -0.0185      0.0058 
 
-N=24 =========================================
-1. Mini-Grid vs. Control  -0.0049         0.007    -0.0185      0.0087 
-2. Mini-Grid vs. Rural   0.0017        0.0076    -0.0132      0.0166 
-3. Mini-Grid vs. Built   -0.3715        0.0764    -0.5212     -0.2218 *
-4. Mini-Grid vs Ocean -0.0064        0.0062    -0.0185      0.0058 
+N = 12 =========================================
+1. Mini-Grid vs. Control     -0.002         0.009    -0.0197      0.0158 
+2. Mini-Grid vs. Rural       0.0015          0.01     -0.018       0.021 
+3. Mini-Grid vs. Built       -0.3684        0.0749    -0.5151     -0.2217 * 
+4. Mini-Grid vs. Ocean       -0.0084        0.0084    -0.0248       0.008 
 
-N=6 =========================================
-1. Mini-Grid vs. Control  -0.0005        0.0112    -0.0224      0.0214 
-2. Mini-Grid vs. Rural   0.0031        0.0118      -0.02      0.0262 
-3. Mini-Grid vs. Built  -0.3436        0.0768    -0.4942      -0.193 *
-4. Mini-Grid vs Ocean -0.0133        0.0117    -0.0364      0.0097 
+N = 6 =========================================
+1. Mini-Grid vs. Control     -0.0005       0.0112    -0.0224      0.0214 
+2. Mini-Grid vs. Rural        0.0031        0.0118   -0.02      0.0262 
+3. Mini-Grid vs. Built       -0.3436       0.0768    -0.4942      -0.193 *
+4. Mini-Grid vs. Ocean       -0.0133        0.0117    -0.0364      0.0097 
 
-#### Prior Results
-Control Sites                   & 0.0186   & 0.014   & [-0.0089, 0.0461] \\
-Rural Areas                     & 0.0159   & 0.0143  & [-0.0122, 0.044] \\
-Ocean Areas                     & 0.0091   & 0.0147  & [-0.0197, 0.038] \\
-Built Areas                     & -0.3882  & 0.0902  & [-0.565, -0.2113] * \\
+N = 1 =========================================
+1. Mini-Grid vs. Control      0.0186    0.014    -0.0089     0.0461
+2. Mini-Grid vs. Rural        0.0159    0.0143   -0.0122     0.044
+4. Mini-Grid vs. Built       -0.3882    0.0902   -0.565      -0.2113 *
+3. Mini-Grid vs. Ocean        0.0091    0.0147   -0.0197     0.038
 
-##### Reformatted New Results like Prior Results
+## Visualize the Results
 
->>
+### Africa
+```{r}
+# Create the data frame
+africa_data <- data.frame(
+  N = rep(c(24, 12, 6, 1), each = 6),
+  Comparison = rep(c("Mini-Grid vs. Self", "Mini-Grid vs. Rural", "Mini-Grid vs. Built", 
+                     "Mini-Grid vs. Ocean", "Mini-Grid vs. Desert", "Mini-Grid vs. Rainforest"), times = 4),
+  ATT = c(-0.1052, 0.0294, -0.754, 0.0217, 0.0219, 0.048, 
+          -0.1551, 0.0472, -0.8464, 0.0301, 0.0386, 0.0627, 
+          -0.0551, 0.0486, -0.9472, 0.0284, 0.0319, 0.0693, 
+          -0.0573, 0.0421, -0.8998, -0.0129, 0.034, 0.0232),
+  Std_Error = c(0.1123, 0.0172, 0.0928, 0.0183, 0.0182, 0.0176, 
+                0.1536, 0.0171, 0.0969, 0.0154, 0.0163, 0.016, 
+                0.0653, 0.0189, 0.1131, 0.0179, 0.0191, 0.018, 
+                0.0741, 0.0263, 0.1225, 0.0175, 0.0188, 0.018),
+  Lower_Bound = c(-0.3253, -0.0044, -0.9358, -0.0141, -0.0137, 0.0135, 
+                  -0.4562, 0.0137, -1.0363, -0.0001, 0.0066, 0.0314, 
+                  -0.1832, 0.0116, -1.1689, -0.0067, -0.0054, 0.0339, 
+                  -0.2026, -0.0095, -1.14, -0.0473, -0.0029, -0.012),
+  Upper_Bound = c(0.1149, 0.0631, -0.5722, 0.0575, 0.0575, 0.0826, 
+                  0.146, 0.0807, -0.6566, 0.0602, 0.0705, 0.094, 
+                  0.0729, 0.0856, -0.7255, 0.0635, 0.0693, 0.1046, 
+                  0.088, 0.0937, -0.6596, 0.0215, 0.071, 0.0584)
+)
 
+# Plot the data
+ggplot(africa_data, aes(x = Comparison, y = ATT, color = factor(N))) +
+  geom_point(position = position_dodge(width = 0.75), size = 3) +
+  geom_errorbar(aes(ymin = Lower_Bound, ymax = Upper_Bound), 
+                position = position_dodge(width = 0.75), width = 0.2) +
+  labs(title = "ATT with 95% Conf. Intervals by Control and SMA Parameter N",
+       x = "Comparison",
+       y = "ATT",
+       color = "Months Smoothed in SMA (N)") +
+  theme_bw() +
+  theme(
+    text = element_text(size = 20, family = "serif"),
+    axis.text.x = element_text(angle = 10, hjust = 1),
+    legend.position = "bottom"
+  )
 
+# export the plot
+ggsave(paste0(figures_folder, "dark_africa_att_by_control_type_sma_n.png"), width = 10, height = 6)
+```
+
+### Sierra Leone
+```{r}
+# Create the data frame
+sl_data <- data.frame(
+  N = rep(c(24, 12, 6, 1), each = 4),
+  Comparison = rep(c("Mini-Grid vs. Control", "Mini-Grid vs. Rural", "Mini-Grid vs. Built", "Mini-Grid vs. Ocean"), times = 4),
+  ATT = c(-0.0049, 0.0017, -0.3715, -0.0064, 
+          -0.002, 0.0015, -0.3684, -0.0084, 
+          -0.0005, 0.0031, -0.3436, -0.0133, 
+          0.0186, 0.0159, -0.3882, 0.0091),
+  Std_Error = c(0.007, 0.0076, 0.0764, 0.0062, 
+                0.009, 0.01, 0.0749, 0.0084, 
+                0.0112, 0.0118, 0.0768, 0.0117, 
+                0.014, 0.0143, 0.0902, 0.0147),
+  Lower_Bound = c(-0.0185, -0.0132, -0.5212, -0.0185, 
+                  -0.0197, -0.018, -0.5151, -0.0248, 
+                  -0.0224, -0.02, -0.4942, -0.0364, 
+                  -0.0089, -0.0122, -0.565, -0.0197),
+  Upper_Bound = c(0.0087, 0.0166, -0.2218, 0.0058, 
+                  0.0158, 0.021, -0.2217, 0.008, 
+                  0.0214, 0.0262, -0.193, 0.0097, 
+                  0.0461, 0.044, -0.2113, 0.038)
+)
+
+# Plot the data
+ggplot(sl_data, aes(x = Comparison, y = ATT, color = factor(N))) +
+  geom_point(position = position_dodge(width = 0.75), size = 3) +
+  geom_errorbar(aes(ymin = Lower_Bound, ymax = Upper_Bound), 
+                position = position_dodge(width = 0.75), width = 0.2) +
+  labs(title = "ATT with 95% Conf. Intervals by Control and SMA Parameter N",
+       x = "Comparison",
+       y = "ATT",
+       color = "Months Smoothed in SMA (N)") +
+  theme_bw() +
+  theme(
+    text = element_text(size = 20, family = "serif"),
+    # axis.text.x = element_text(angle = 0, hjust = 1),
+    legend.position = "bottom"
+  )
+
+# Export the plot
+ggsave(paste0(figures_folder, "dark_sl_att_by_control_type_sma_n.png"), width = 10, height = 6)
+```
 
 ## Warnings
 Warning messages:
