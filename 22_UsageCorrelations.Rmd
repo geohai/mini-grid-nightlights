@@ -3,6 +3,7 @@
 ## Load Libraries
 ```{r}
 library(tidyverse)
+library(zoo) # for sma
 ```
 
 ## Load Data
@@ -79,6 +80,9 @@ customer_time_plot <- pg %>%
   theme(text = element_text(family = "serif", size = 20))
 customer_time_plot
 ggsave("figures/usage/customer_time_plot.png", customer_time_plot, width = 12, height = 6, units = "in", dpi = 300)
+
+rm(usage_time_plot, customer_time_plot)
+rm(pg, cbil)
 ```
 
 ## Data Merging
@@ -112,6 +116,8 @@ night_use[is.na(night_use)] <- 0
 
 # save merged data
 saveRDS(night_use, "data/usage/night_use.rds")
+
+rm(use, night, night_use)
 ```
 
 ## Data Analysis
@@ -119,6 +125,16 @@ saveRDS(night_use, "data/usage/night_use.rds")
 # load merged data
 night_use <- readRDS("data/usage/night_use.rds")
 
+# calculate a 1-year simple moving average for image_value
+night_use <- night_use %>%
+  group_by(site_name) %>%
+  mutate(image_value_06sma = zoo::rollmean(image_value, k = 6, fill = NA, align = "right")) %>%
+  mutate(image_value_12sma = zoo::rollmean(image_value, k = 12, fill = NA, align = "right")) %>%
+  mutate(image_value_24sma = zoo::rollmean(image_value, k = 24, fill = NA, align = "right")) %>%
+  ungroup()
+
+# calculate acpu
+# set negative image_value values to 0
 # keep only months after mini-grid installation
 night_use <- night_use %>%
   mutate(acpu = total_consumption / num_customers) %>%
@@ -129,9 +145,9 @@ night_use <- night_use %>%
 summary(night_use)
 
 # keep just non-zero values and non-outliers
-night_use <- night_use %>%
-    filter(image_value > 0.01) %>%
-    filter(total_revenue > 30)
+# night_use <- night_use %>%
+#     filter(image_value > 0.01) %>%
+#     filter(total_revenue > 30)
 
 # export clean night_use
 saveRDS(night_use, "data/usage/night_use_clean.rds")
@@ -161,13 +177,13 @@ saveRDS(night_use, "data/usage/night_use_clean.rds")
  3rd Qu.: 2334.82   3rd Qu.: 270.0   3rd Qu.: 1169.942   3rd Qu.:1050.0    
  Max.   :32770.81   Max.   :2276.2   Max.   :15009.643   Max.   :8762.0    
                                                                            
-      acpu        
- Min.   : 0.3978  
- 1st Qu.: 4.6249  
- Median : 6.7664  
- Mean   : 7.4026  
- 3rd Qu.: 9.2618  
- Max.   :43.0226  
+ image_value_06sma image_value_12sma image_value_24sma      acpu        
+ Min.   :0.1270    Min.   :0.1675    Min.   :0.1889    Min.   : 0.3978  
+ 1st Qu.:0.2834    1st Qu.:0.2853    1st Qu.:0.2679    1st Qu.: 4.6249  
+ Median :0.3258    Median :0.3219    Median :0.3043    Median : 6.7664  
+ Mean   :0.3432    Mean   :0.3344    Mean   :0.3188    Mean   : 7.4026  
+ 3rd Qu.:0.3711    3rd Qu.:0.3573    3rd Qu.:0.3447    3rd Qu.: 9.2618  
+ Max.   :1.0369    Max.   :0.9125    Max.   :0.8468    Max.   :43.0226     
 
 ## Correlation Analysis
 ```{r}
@@ -184,15 +200,39 @@ cor(night_use$num_customers, night_use$image_value)
 # look at the relationship between nighttime brightness and total consumption with regression
 use.lm <- lm(night_use$image_value ~ night_use$total_consumption)
 summary(use.lm)
-
 acpu.lm <- lm(night_use$image_value ~ night_use$acpu)
 summary(acpu.lm)
-
 rev.lm <- lm(night_use$image_value ~ night_use$total_revenue)
 summary(rev.lm)
-
 cust.lm <- lm(night_use$image_value ~ night_use$num_customers)
 summary(cust.lm)
+```
+
+## Correlation Analysis for Simple Moving Averages
+```{r}
+# read in clean night use
+night_use <- readRDS("data/usage/night_use_clean.rds")
+
+# check again with SMA
+cor(night_use$image_value_24sma, night_use$total_consumption)
+cor(night_use$image_value_24sma, night_use$acpu)
+cor(night_use$image_value_24sma, night_use$total_revenue)
+cor(night_use$image_value_24sma, night_use$total_transactions)
+cor(night_use$image_value_24sma, night_use$num_customers)
+
+use.lm.sma <- lm(night_use$image_value_24sma ~ night_use$total_consumption)
+acpu.lm.sma <- lm(night_use$image_value_24sma ~ night_use$acpu)
+rev.lm.sma <- lm(night_use$image_value_24sma ~ night_use$total_revenue)
+tx.lm.sma <- lm(night_use$image_value_24sma ~ night_use$total_transactions)
+cust.lm.sma <- lm(night_use$image_value_24sma ~ night_use$num_customers)
+
+summary(use.lm.sma)
+summary(acpu.lm.sma)
+summary(rev.lm.sma)
+summary(tx.lm.sma)
+summary(cust.lm.sma)
+
+rm(use.lm.sma, acpu.lm.sma, rev.lm.sma, cust.lm.sma)
 ```
 
 ## Plots
@@ -203,113 +243,90 @@ night_use <- readRDS("data/usage/night_use_clean.rds")
 # for presentation
 # plot the relationship between nighttime brightness and total consumption
 use_plot_pres <- night_use %>%
-  # set negative image_value values to 0
-  ggplot(aes(x = image_value, y = total_consumption)) +
-  # make size proportional to number of customers
+  ggplot(aes(x = image_value_24sma, y = total_consumption)) +
   geom_point(aes(size = num_customers, col = num_customers), alpha = 0.5) +
-  # use viridis
   scale_color_viridis_c() +
   geom_smooth(method = "lm", col = "darkgreen") +
-  # log scales for x and y
   scale_x_log10() +
   scale_y_log10() +
-  labs(title = "Nighttime Brightness vs. Total Consumption",
+  labs(title = "Nighttime Brightness 24-Month SMA vs. Total Consumption",
        x = "Nighttime Brightness (nW/cm^2/sr)",
        y = "Total Consumption (kWh)") +
-   # change to serif font, text size 20
    theme_bw() +
    theme(text = element_text(size = 18), legend.position = "right")
 use_plot_pres
-ggsave("figures/usage/usage_scatterplot_pres.png", use_plot_pres, width = 15, height = 7, units = "in", dpi = 300)
+ggsave("figures/usage/usage_scatterplot_pres_sma24.png", use_plot_pres, width = 15, height = 7, units = "in", dpi = 300)
 
 
 # for thesis
 
 # plot the relationship between nighttime brightness and total consumption
 use_plot <- night_use %>%
-  # set negative image_value values to 0
-  ggplot(aes(x = image_value, y = total_consumption)) +
-  # make size proportional to number of customers
+  ggplot(aes(x = image_value_24sma, y = total_consumption)) +
   geom_point(aes(size = num_customers, col = num_customers), alpha = 0.5) +
-  # use viridis
   scale_color_viridis_c() +
   geom_smooth(method = "lm", col = "darkgreen") +
-  # log scales for x and y
   scale_x_log10() +
   scale_y_log10() +
-  labs(title = "Nighttime Brightness vs. Total Consumption",
+  labs(title = "Nighttime Brightness 24-Month SMA vs. Total Consumption",
        x = "Nighttime Brightness (nW/cm^2/sr)",
        y = "Total Consumption (kWh)") +
-   # change to serif font, text size 20
    theme_bw() +
    theme(text = element_text(family = "serif", size = 20), legend.position = "none")
 use_plot
-ggsave("figures/usage/usage_scatterplot.png", use_plot, width = 8, height = 6, units = "in", dpi = 300)
+ggsave("figures/usage/usage_scatterplot_sma24.png", use_plot, width = 8, height = 6, units = "in", dpi = 300)
 
 
 # plot the nighttime brightness vs. total consumption
 acpu_plot <- night_use %>%
-  # set negative image_value values to 0
-  ggplot(aes(x = image_value, y = acpu)) +
-  # make size proportional to number of customers
+  ggplot(aes(x = image_value_24sma, y = acpu)) +
   geom_point(aes(size = num_customers, col = num_customers), alpha = 0.5) +
-  # use viridis
   scale_color_viridis_c() +
   geom_smooth(method = "lm", col = "darkgreen") +
-  # log scales for x and y
   scale_x_log10() +
   scale_y_log10() +
-  labs(title = "Nighttime Brightness vs. ACPU",
+  labs(title = "Nighttime Brightness 24-Month SMA vs. ACPU",
        x = "Nighttime Brightness (nW/cm^2/sr)",
        y = "Average Consumption Per User (ACPU) (kWh)") +
-   # change to serif font, text size 20
    theme_bw() +
    theme(text = element_text(family = "serif", size = 20), legend.position = "none")
 acpu_plot
-ggsave("figures/usage/acpu_scatterplot.png", acpu_plot, width = 8, height = 6, units = "in", dpi = 300)
+ggsave("figures/usage/acpu_scatterplot_sma24.png", acpu_plot, width = 8, height = 6, units = "in", dpi = 300)
 
 # plot the nighttime brightness vs. total consumption
 rev_plot <- night_use %>%
   filter(total_revenue > 30) %>%
-  # set negative image_value values to 0
-  ggplot(aes(x = image_value, y = total_revenue)) +
-  # make size proportional to number of customers
+  ggplot(aes(x = image_value_24sma, y = total_revenue)) +
   geom_point(aes(size = num_customers, col = num_customers), alpha = 0.5) +
-  # use viridis
   scale_color_viridis_c() +
   geom_smooth(method = "lm", col = "darkgreen") +
-  # log scales for x and y
   scale_x_log10() +
   scale_y_log10() +
-  labs(title = "Nighttime Brightness vs. Total Revenue",
+  labs(title = "Nighttime Brightness 24-Month SMA vs. Total Revenue",
        x = "Nighttime Brightness (nW/cm^2/sr)",
        y = "Total Revenue (USD)") +
-   # change to serif font, text size 20
    theme_bw() +
    theme(text = element_text(family = "serif", size = 20), legend.position = "none")
 rev_plot
-ggsave("figures/usage/rev_scatterplot.png", rev_plot, width = 8, height = 6, units = "in", dpi = 300)
+ggsave("figures/usage/rev_scatterplot_sma24.png", rev_plot, width = 8, height = 6, units = "in", dpi = 300)
 
 # plot the nighttime brightness vs. total consumption
 cust_plot <- night_use %>%
-  # set negative image_value values to 0
-  ggplot(aes(x = image_value, y = num_customers)) +
-  # make size proportional to number of customers
+  ggplot(aes(x = image_value_24sma, y = num_customers)) +
   geom_point(aes(size = num_customers, col = num_customers), alpha = 0.5) +
-  # use viridis
   scale_color_viridis_c() +
   geom_smooth(method = "lm", col = "darkgreen") +
-  # log scales for x and y
   scale_x_log10() +
   scale_y_log10() +
-  labs(title = "Nighttime Brightness vs. # of Customers",
+  labs(title = "Nighttime Brightness 24-Month SMA vs. # of Customers",
        x = "Nighttime Brightness (nW/cm^2/sr)",
        y = "Number of Customers in Grid (count)") +
-   # change to serif font, text size 20
    theme_bw() +
    theme(text = element_text(family = "serif", size = 20), legend.position = "none")
 cust_plot
-ggsave("figures/usage/cust_scatterplot.png", cust_plot, width = 8, height = 6, units = "in", dpi = 300)
+ggsave("figures/usage/cust_scatterplot_sma24.png", cust_plot, width = 8, height = 6, units = "in", dpi = 300)
+
+rm(use_plot, acpu_plot, rev_plot, cust_plot)
 ```
 
 ## Look for Zero Usage Sites
