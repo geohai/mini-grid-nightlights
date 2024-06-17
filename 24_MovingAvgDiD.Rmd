@@ -13,7 +13,9 @@ library(zoo)
 # data folder
 data_folder <- "data/dark_africa/"
 figures_folder <- "figures/dark_africa/"
+```
 
+```{r}
 calculate_sma <- function(df) {
   df %>%
     group_by(id) %>%
@@ -321,3 +323,4 @@ Warning messages:
   Simultaneous critical value is arguably `too large' to be realible. 
   This usually happens when number of observations per group is small 
   and/or there is no much variation in outcomes.
+

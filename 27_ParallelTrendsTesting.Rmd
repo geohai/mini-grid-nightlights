@@ -1,0 +1,152 @@
+
+# Parallel Trends Testing
+
+## Load Libraries
+```{r}
+library(tidyverse)
+```
+
+## Define Globals
+```{r}
+# data folder
+data_folder <- "data/dark_africa/"
+figures_folder <- "figures/dark_africa/"
+```
+
+## Check if Old Mini-Grids are Brighter than New Mini-Grids
+```{r}
+# read in data
+df <- readRDS(paste0(data_folder, "africa_df_melt_clean_for_csdind.rds"))
+
+# keep just mini-grids
+df <- df %>% filter(type == "minigrid")
+
+# calculate the median brightness for each site
+df_means <- df %>%
+  group_by(id) %>%
+  summarise(
+    year_commissioned = max(year_commissioned),
+    mean_value = mean(image_value),
+    median_value = median(image_value),
+    n = n()
+  )
+
+# plot year commissioned vs. median brightness
+# color with viridis by median brightness
+ggplot(df_means, aes(x = year_commissioned, y = median_value)) +
+  geom_point() +
+  # add geom_smooth to show the trend
+  geom_smooth(method = "lm", se = FALSE) +
+  scale_y_log10() +
+  labs(title = "Median Brightness by Year Commissioned for Mini-Grids",
+       x = "Year Commissioned",
+       y = "Median Brightness (nW/sr/cm^2)") +
+  theme_bw() +
+  theme(text = element_text(size = 20, family = "serif"))
+
+# save the plot
+ggsave(paste0(figures_folder, "median_brightness_by_year_commissioned.png"), width = 10, height = 6)
+```
+
+## Check if Parallel Trends Assumption Holds
+```{r}
+# read in data
+df <- readRDS(paste0(data_folder, "africa_df_melt_clean_for_csdind.rds"))
+
+# add a column "treatment" for that is 1 for minigrid sites, 0 for all others
+df <- df %>%
+  mutate(treatment = ifelse(type == "minigrid", 1, 0))
+
+# plot brightness by image_date with linear geom_smooth, color by type, label with slope values
+ggplot(df, aes(x = image_date, y = image_value, color = type)) +
+  geom_smooth(method = "lm", se = FALSE) +
+  labs(title = "Brightness by Image Date",
+       x = "Image Date",
+       y = "Brightness (nW/sr/cm^2)") +
+  log10_scale() +
+  theme_bw() +
+  theme(text = element_text(size = 20, family = "serif"))
+
+# save the plot
+ggsave(paste0(figures_folder, "parallel_trends.png"), width = 10, height = 6)
+```
+
+## Run Regressions
+```{r}
+# Load necessary libraries
+# library(fixest)
+
+# read in data
+df <- readRDS(paste0(data_folder, "africa_df_melt_clean_for_csdind.rds"))
+
+# change date_commissioned for control sites to 2030-01-01
+df <- df %>%
+  mutate(date_commissioned = ifelse(type == "minigrid", date_commissioned, as.Date("2030-01-01")))
+
+# add a column "treatment" for that is 1 for minigrid sites, 0 for all others
+# keep only pre-treatment data
+df <- df %>%
+  mutate(treated = ifelse(type == "minigrid", 1, 0)) %>%
+  mutate(pre_treatment = image_date < date_commissioned)
+
+# Subset data to include only the pre-treatment period
+pre_treatment_df <- df %>%
+  filter(pre_treatment == TRUE)
+
+# pick out the maximum image_date for a minigrid site
+max_date <- pre_treatment_df %>%
+  filter(type == "minigrid") %>%
+  summarise(
+      max_date = max(image_date),
+      min_date = min(image_date)
+  ) %>%
+  pull(max_date)
+
+# keep only the data up to the maximum image_date for a minigrid site
+pre_treatment_df <- pre_treatment_df %>%
+  filter(image_date <= max_date)
+
+# keep just minigrid and urban sites
+pre_treatment_df <- pre_treatment_df %>%
+  filter(type %in% c("minigrid", "built"))
+
+# Run the regression to test for parallel trends between minigrid and urban sites
+pre_trends_test <- lm(image_value ~ time_period + treated + time_period*treated, data = pre_treatment_df)
+
+# Output the summary of the model
+summary(pre_trends_test)
+```
+
+## Results
+
+### Africa
+Mini-grid vs. Urban 
+                     Estimate Std. Error t value Pr(>|t|)    
+(Intercept)          4.182248   0.055730  75.045  < 2e-16 ***
+time_period          0.016568   0.001226  13.517  < 2e-16 ***
+treated             -3.883616   0.091966 -42.229  < 2e-16 ***
+time_period:treated -0.010258   0.003068  -3.344 0.000827 ***
+
+### Sierra Leone
+RUN THIS ANALYSIS AGAIN FOR OTHER SITE TYPES AND OTHER CONTINENT
+REPORT ON THE INTERACTION TERM VALUES AND SIGNIFIANCE
+IF SIGNIFICANT, THEN WE CAN SAY THAT THE PARALLEL TRENDS ASSUMPTION DOES NOT HOLD
+IF NOT SIGNIFICANT, THEN WE CAN SAY THAT THE PARALLEL TRENDS ASSUMPTION HOLDS
+
+<!-- # glimpse(pre_treatment_df)
+# Rows: 603,252
+# Columns: 14
+# $ date_commissioned  <dbl> 17713, 17713, 17713, 17713, 17713, 17713, 17713, 17…
+# $ type               <fct> minigrid, minigrid, minigrid, minigrid, minigrid, m…
+# $ landcover          <fct> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA,…
+# $ id                 <dbl> 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, …
+# $ image_date         <date> 2014-01-01, 2014-02-01, 2014-03-01, 2014-04-01, 20…
+# $ image_value        <dbl> 2.0445589, 1.4203698, 1.1792074, 1.6215279, 1.72034…
+# $ year_commissioned  <dbl> 2018, 2018, 2018, 2018, 2018, 2018, 2018, 2018, 201…
+# $ year_image         <dbl> 2014, 2014, 2014, 2014, 2014, 2014, 2014, 2014, 201…
+# $ month_commissioned <dbl> 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, 7, …
+# $ month_image        <dbl> 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 1, 2, 3, 4, …
+# $ group              <dbl> 55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55, 55,…
+# $ time_period        <dbl> 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, …
+# $ treated            <dbl> 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, …
+# $ pre_treatment      <lgl> TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRU… -->
