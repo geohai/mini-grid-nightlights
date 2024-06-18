@@ -9,61 +9,62 @@ library(tidyverse)
 ## Define Globals
 ```{r}
 # data folder
-data_folder <- "data/dark_africa/"
-figures_folder <- "figures/dark_africa/"
+data_folder <- "data/dark_sl/"
+figures_folder <- "figures/dark_sl/"
 ```
 
 ## Check if Old Mini-Grids are Brighter than New Mini-Grids
 ```{r}
 # read in data
-df <- readRDS(paste0(data_folder, "africa_df_melt_clean_for_csdind.rds"))
+df <- readRDS(paste0(data_folder, "all_df_for_csdind.rds"))
 
 # keep just mini-grids
-df <- df %>% filter(type == "minigrid")
+df <- df %>% filter(type == "mini-grid")
 
 # calculate the median brightness for each site
 df_means <- df %>%
   group_by(id) %>%
   summarise(
-    year_commissioned = max(year_commissioned),
+    date_commissioned = max(date_commissioned),
     mean_value = mean(image_value),
     median_value = median(image_value),
     n = n()
   )
 
-# plot year commissioned vs. median brightness
+# plot date commissioned vs. median brightness
 # color with viridis by median brightness
-ggplot(df_means, aes(x = year_commissioned, y = median_value)) +
+df_means %>%
+  filter(median_value < 0.3) %>%
+  ggplot( aes(x = date_commissioned, y = median_value)) +
   geom_point() +
   # add geom_smooth to show the trend
-  geom_smooth(method = "lm", se = FALSE) +
+  geom_smooth(method = "lm", se = TRUE) +
   scale_y_log10() +
-  labs(title = "Median Brightness by Year Commissioned for Mini-Grids",
-       x = "Year Commissioned",
+  labs(title = "Median Brightness by Date Commissioned for Mini-Grids in Sierra Leone",
+       x = "Date Commissioned",
        y = "Median Brightness (nW/sr/cm^2)") +
   theme_bw() +
   theme(text = element_text(size = 20, family = "serif"))
 
 # save the plot
-ggsave(paste0(figures_folder, "median_brightness_by_year_commissioned.png"), width = 10, height = 6)
+ggsave(paste0(figures_folder, "median_brightness_by_date_commissioned.png"), width = 10, height = 6)
 ```
 
 ## Check if Parallel Trends Assumption Holds
 ```{r}
 # read in data
-df <- readRDS(paste0(data_folder, "africa_df_melt_clean_for_csdind.rds"))
+df <- readRDS(paste0(data_folder, "all_df_for_csdind.rds"))
 
-# add a column "treatment" for that is 1 for minigrid sites, 0 for all others
+# add a column "treatment" for that is 1 for mini-grid sites, 0 for all others
 df <- df %>%
-  mutate(treatment = ifelse(type == "minigrid", 1, 0))
+  mutate(treatment = ifelse(type == "mini-grid", 1, 0))
 
 # plot brightness by image_date with linear geom_smooth, color by type, label with slope values
 ggplot(df, aes(x = image_date, y = image_value, color = type)) +
-  geom_smooth(method = "lm", se = FALSE) +
+  geom_smooth(method = "lm", se = TRUE) +
   labs(title = "Brightness by Image Date",
        x = "Image Date",
        y = "Brightness (nW/sr/cm^2)") +
-  log10_scale() +
   theme_bw() +
   theme(text = element_text(size = 20, family = "serif"))
 
@@ -77,41 +78,50 @@ ggsave(paste0(figures_folder, "parallel_trends.png"), width = 10, height = 6)
 # library(fixest)
 
 # read in data
-df <- readRDS(paste0(data_folder, "africa_df_melt_clean_for_csdind.rds"))
+df <- readRDS(paste0(data_folder, "all_df_for_csdind.rds"))
 
 # change date_commissioned for control sites to 2030-01-01
 df <- df %>%
-  mutate(date_commissioned = ifelse(type == "minigrid", date_commissioned, as.Date("2030-01-01")))
+  mutate(date_commissioned = ifelse(type == "mini-grid", date_commissioned, as.Date("2030-01-01")))
 
-# add a column "treatment" for that is 1 for minigrid sites, 0 for all others
+# add a column "treatment" for that is 1 for mini-grid sites, 0 for all others
 # keep only pre-treatment data
 df <- df %>%
-  mutate(treated = ifelse(type == "minigrid", 1, 0)) %>%
+  mutate(treated = ifelse(type == "mini-grid", 1, 0)) %>%
   mutate(pre_treatment = image_date < date_commissioned)
 
 # Subset data to include only the pre-treatment period
 pre_treatment_df <- df %>%
   filter(pre_treatment == TRUE)
 
-# pick out the maximum image_date for a minigrid site
+# pick out the maximum image_date for a mini-grid site
 max_date <- pre_treatment_df %>%
-  filter(type == "minigrid") %>%
+  filter(type == "mini-grid") %>%
   summarise(
       max_date = max(image_date),
       min_date = min(image_date)
   ) %>%
   pull(max_date)
 
-# keep only the data up to the maximum image_date for a minigrid site
+# keep only the data up to the maximum image_date for a mini-grid site
 pre_treatment_df <- pre_treatment_df %>%
   filter(image_date <= max_date)
 
-# keep just minigrid and urban sites
-pre_treatment_df <- pre_treatment_df %>%
-  filter(type %in% c("minigrid", "built"))
+# keep just mini-grid and built sites
+pre_treatment_df_filt <- pre_treatment_df %>%
+  filter(type %in% c("mini-grid"))
 
-# Run the regression to test for parallel trends between minigrid and urban sites
-pre_trends_test <- lm(image_value ~ time_period + treated + time_period*treated, data = pre_treatment_df)
+# set the treated to 0 for mini-grids buitl 2017 or later
+pre_treatment_df_filt <- pre_treatment_df_filt %>%
+  mutate(treated = ifelse(date_commissioned >= as.Date("2021-01-01"), 0, treated))
+
+# keep only images before 2017-01-01
+pre_treatment_df_filt <- pre_treatment_df_filt %>%
+  filter(image_date < as.Date("2021-01-01"))
+
+
+# Run the regression to test for parallel trends between mini-grid and built sites
+pre_trends_test <- lm(image_value ~ time_period + treated + time_period*treated, data = pre_treatment_df_filt)
 
 # Output the summary of the model
 summary(pre_trends_test)
@@ -127,7 +137,93 @@ time_period          0.016568   0.001226  13.517  < 2e-16 ***
 treated             -3.883616   0.091966 -42.229  < 2e-16 ***
 time_period:treated -0.010258   0.003068  -3.344 0.000827 ***
 
+Mini-grid vs. Rural
+                     Estimate Std. Error t value Pr(>|t|)    
+(Intercept)         0.0331545  0.0063938   5.185 2.16e-07 ***
+time_period         0.0027785  0.0001406  19.758  < 2e-16 ***
+treated             0.2654782  0.0146611  18.108  < 2e-16 ***
+time_period:treated 0.0035320  0.0005263   6.711 1.94e-11 ***
+
+Mini-grid vs. Ocean
+                     Estimate Std. Error t value Pr(>|t|)    
+(Intercept)         0.0057826  0.0085202   0.679    0.497    
+time_period         0.0026867  0.0001874  14.337  < 2e-16 ***
+treated             0.2928501  0.0146336  20.012  < 2e-16 ***
+time_period:treated 0.0036238  0.0004943   7.332 2.29e-13 ***
+
+Mini-grid vs. Desert
+                     Estimate Std. Error t value Pr(>|t|)    
+(Intercept)         0.0272917  0.0085125   3.206  0.00135 ** 
+time_period         0.0027271  0.0001872  14.566  < 2e-16 ***
+treated             0.2713410  0.0146204  18.559  < 2e-16 ***
+time_period:treated 0.0035834  0.0004938   7.257    4e-13 ***
+
+Mini-grid vs. Rainforest
+                     Estimate Std. Error t value Pr(>|t|)    
+(Intercept)         0.0150861  0.0085310   1.768    0.077 .  
+time_period         0.0025132  0.0001876  13.394  < 2e-16 ***
+treated             0.2835466  0.0146521  19.352  < 2e-16 ***
+time_period:treated 0.0037973  0.0004949   7.673  1.7e-14 ***
+
+Mini-Grids Pre-2016 vs. Post-2016
+                     Estimate Std. Error t value Pr(>|t|)
+(Intercept)          0.392528   0.033209  11.820  < 2e-16 ***
+time_period          0.002263   0.002324   0.974 0.330219    
+treated             -0.251286   0.075258  -3.339 0.000843 ***
+time_period:treated  0.001945   0.006956   0.280 0.779790    
+
+Mini-Grids Pre-2017 vs. Post-2017
+                     Estimate Std. Error t value Pr(>|t|)
+(Intercept)          0.378855   0.033993  11.145   <2e-16 ***
+time_period          0.001588   0.001602   0.991   0.3217    
+treated             -0.124671   0.053649  -2.324   0.0201 *  
+time_period:treated  0.006699   0.003128   2.142   0.0322 * 
+
+Mini-Grids Pre-2018 vs. Post-2018
+                     Estimate Std. Error t value Pr(>|t|)    
+(Intercept)         0.2473409  0.0416757   5.935 2.98e-09 ***
+time_period         0.0069649  0.0014807   4.704 2.57e-06 ***
+treated             0.0565939  0.0508446   1.113    0.266    
+time_period:treated 0.0003162  0.0020461   0.155    0.877    
+
 ### Sierra Leone
+Mini-Grids vs. Built
+                      Estimate Std. Error t value Pr(>|t|)    
+(Intercept)          0.7086205  0.0404909  17.501  < 2e-16 ***
+time_period          0.0121090  0.0006695  18.086  < 2e-16 ***
+treated             -0.6405385  0.0602527 -10.631  < 2e-16 ***
+time_period:treated -0.0089484  0.0011353  -7.882  3.6e-15 ***
+
+Mini-Grids vs. Rural
+                      Estimate Std. Error t value Pr(>|t|)    
+(Intercept)          0.0714481  0.0065220  10.955  < 2e-16 ***
+time_period          0.0024159  0.0001078  22.402  < 2e-16 ***
+treated             -0.0033661  0.0097051  -0.347    0.729    
+time_period:treated  0.0007447  0.0001829   4.073 4.69e-05 ***
+
+Mini-Grids vs. Ocean
+                     Estimate Std. Error t value Pr(>|t|)    
+(Intercept)         8.846e-04  5.435e-03   0.163   0.8707    
+time_period         2.835e-03  8.987e-05  31.544   <2e-16 ***
+treated             6.720e-02  8.088e-03   8.309   <2e-16 ***
+time_period:treated 3.258e-04  1.524e-04   2.138   0.0325 * 
+
+Mini-Grids vs. Control
+                      Estimate Std. Error t value Pr(>|t|)    
+(Intercept)          0.0724341  0.0068530  10.570  < 2e-16 ***
+time_period          0.0025777  0.0001133  22.748  < 2e-16 ***
+treated             -0.0043522  0.0096474  -0.451  0.65191    
+time_period:treated  0.0005829  0.0001797   3.243  0.00119 **
+
+Mini-Grids Pre-2021 vs. Post-2021
+Coefficients:
+                      Estimate Std. Error t value Pr(>|t|)    
+(Intercept)          0.0841814  0.0131629   6.395 1.81e-10 ***
+time_period          0.0028601  0.0002690  10.632  < 2e-16 ***
+treated             -0.0181268  0.0175487  -1.033    0.302    
+time_period:treated  0.0002130  0.0003827   0.557    0.578   
+
+## Notes
 RUN THIS ANALYSIS AGAIN FOR OTHER SITE TYPES AND OTHER CONTINENT
 REPORT ON THE INTERACTION TERM VALUES AND SIGNIFIANCE
 IF SIGNIFICANT, THEN WE CAN SAY THAT THE PARALLEL TRENDS ASSUMPTION DOES NOT HOLD
@@ -137,7 +233,7 @@ IF NOT SIGNIFICANT, THEN WE CAN SAY THAT THE PARALLEL TRENDS ASSUMPTION HOLDS
 # Rows: 603,252
 # Columns: 14
 # $ date_commissioned  <dbl> 17713, 17713, 17713, 17713, 17713, 17713, 17713, 17…
-# $ type               <fct> minigrid, minigrid, minigrid, minigrid, minigrid, m…
+# $ type               <fct> mini-grid, mini-grid, mini-grid, mini-grid, mini-grid, m…
 # $ landcover          <fct> NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA, NA,…
 # $ id                 <dbl> 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, …
 # $ image_date         <date> 2014-01-01, 2014-02-01, 2014-03-01, 2014-04-01, 20…
