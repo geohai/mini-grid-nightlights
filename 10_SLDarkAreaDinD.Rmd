@@ -349,7 +349,7 @@ df$id <- as.integer(df$id)
 
 # keep just certain groups
 df <- df %>%
-    filter(type == "mini-grid" | type == "built")
+    filter(type %in% c("mini-grid", "control"))
 
 # run the model
 # https://bcallaway11.github.io/did/reference/att_gt.html
@@ -375,14 +375,14 @@ summary(did_control_agg)
 # plot group-time ATTs 
 # set font size to 16pt
 did_control_agg_plt <- ggdid(did_control_agg, xgap = 6) +
-    labs(title = "ATT of Mini-Grid Commissioning on Nighttime Brightness for Mini-Grid Sites vs. Built-Up Areas", x = "Months Since Commissioning", y = "Change in Brightness") +
+    labs(title = "ATT of Mini-Grid Commissioning on Nighttime Brightness for Mini-Grid Sites vs. Not-Yet Treated Areas", x = "Months Since Commissioning", y = "Change in Brightness") +
     theme_bw() +
     theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1))+
     theme(text = element_text(size = 20, family = "serif")) +
     theme(legend.position = "bottom")
 
 print(did_control_agg_plt)
-ggsave("figures/dark_sl/did_minigrid_vs_built_serif.png", did_control_agg_plt, width = 16, height = 8, units = "in", dpi = 300)
+ggsave("figures/dark_sl/did_minigrid_vs_self_serif.png", did_control_agg_plt, width = 16, height = 8, units = "in", dpi = 300)
 
 # export as a figure for thesis
 # ggsave("figures/dark_sl/did_minigrid_vs_control_v3.png", did_control_agg_plt, width = 12, height = 6, units = "in", dpi = 600)
@@ -402,8 +402,8 @@ ggsave("figures/dark_sl/did_minigrid_vs_built_serif.png", did_control_agg_plt, w
  0.018        0.0137    -0.0089      0.0448 
 
 ### Mini-Grids vs. Not-Yet Treated Sites
-   ATT    Std. Error     [ 95%  Conf. Int.]  
- -0.09        0.0283    -0.1454     -0.0346 *
+    ATT    Std. Error     [ 95%  Conf. Int.] 
+ 0.0166        0.0198    -0.0223      0.0554 
 
 ### Mini-Grid vs Rural Areas
     ATT    Std. Error     [ 95%  Conf. Int.] 
