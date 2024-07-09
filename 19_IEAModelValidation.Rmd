@@ -3,8 +3,23 @@
 ```{r}
 library(tidyverse)
 library(sf)
+library(ggmap)
+library(dotenv)
+library(units)
 ```
 
+## Configure the Maps APIs
+```{r}
+# read in env file
+load_dot_env(".env")
+google.maps.api.key <- Sys.getenv("GOOGLE_MAPS_API_KEY")
+stadia.maps.api.key <- Sys.getenv("STADIA_MAPS_API_KEY")
+register_google(google.maps.api.key)
+register_stadiamaps(stadia.maps.api.key)
+rm(google.maps.api.key, stadia.maps.api.key)
+```
+
+## Load & Merge the Mini-Grid Site Locations 
 ```{r}
 # Load the mini-grid site locations from each developer
 
@@ -179,19 +194,6 @@ st_crs(oedata) <- 4326
 st_write(oedata, "data/oemap/oedata.geojson")
 ```
 
-## Do Mini-Grid Analysis
-```{r}
-# library(terra)
-
-# # read in the mini-grid data
-# mgs <- vect("data/oemap/mgs_iea_114.geojson")
-# oe <- vect("data/oemap/oedata.geojson")
-
-# # count the number of features in oe that lie within each feature of mgs
-# oe_mgs <- vect(oe, mgs, count = TRUE)
-
-```
-
 ## Export the Mini-Grid Sites with a 1km Buffer
 ```{r}
 # read in the grid cells mgs
@@ -207,64 +209,79 @@ rm(mgs_grid_cells)
 # clean the geometries
 mgs <- st_make_valid(mgs)
 
-# convert geometry from a point to 1km buffer
-# this is in geographic coordinates, so it's using arc seconds
-print(mgs$geometry[1])
-mgs <- mgs %>% st_buffer(1000)
-print(mgs$geometry[1])
-
-# export the mini-grid sites with the buffer
-st_write(mgs, "data/oemap/mgs_buffer_1km.geojson")
+# export mgs with grid cell ids
+st_write(mgs, "data/oemap/mgs_iea_114_with_cell_id.geojson")
 ```
 
-## Get Background Map and Visualize a Mini-Grid Site
+
+## Get Background Map to Visualize a Mini-Grid Site
 ```{r}
-library(ggmap) # for getting map backgrounds
-library(dotenv) # for environment variables
+# read in the mini-grid sites
+mgs <- st_read("data/oemap/mgs_iea_114_with_cell_id.geojson")
 
-mgs <- st_read("data/oemap/mgs_buffer_1km.geojson")
-# get bbox of inter
-bbox <- st_bbox(mgs[1,])
-print(bbox)
-# structure(c(xmin = -2.1301409793829, ymin = 7.72019593581591, 
-# xmax = -2.09349023557637, ymax = 7.75017246739207), class = "bbox", crs = structure(list(
-#    input = "WGS 84", wkt = "GEOGCRS[\"WGS 84\",\n    DATUM[\"World Geodetic System 1984\",\n        ELLIPSOID[\"WGS 84\",6378137,298.257223563,\n            LENGTHUNIT[\"metre\",1]]],\n    PRIMEM[\"Greenwich\",0,\n        ANGLEUNIT[\"degree\",0.0174532925199433]],\n    CS[ellipsoidal,2],\n        AXIS[\"geodetic latitude (Lat)\",north,\n            ORDER[1],\n            ANGLEUNIT[\"degree\",0.0174532925199433]],\n        AXIS[\"geodetic longitude (Lon)\",east,\n            ORDER[2],\n            ANGLEUNIT[\"degree\",0.0174532925199433]],\n    ID[\"EPSG\",4326]]"), class = "crs"))
-# convert bbox to this format 
-# bbox = c(left = -95.80204, bottom = 29.38048, right = -94.92313, top = 30.14344),
-
-# set the bbox
-left <- as.numeric(bbox["xmin"])
-bottom <- as.numeric(bbox["ymin"])
-right <- as.numeric(bbox["xmax"])
-top <- as.numeric(bbox["ymax"])
-
+# get the center of the first mini-grid site
 center <- c(
-  lon = (left + right) / 2,
-  lat = (bottom + top) / 2
+  lon = st_coordinates(mgs$geometry[1])[1, 1],
+  lat = st_coordinates(mgs$geometry[1])[1, 2]
 )
 
-# read in env file
-load_dot_env(".env")
-stadia.maps.api.key <- Sys.getenv("STADIA_MAPS_API_KEY")
-google.maps.api.key <- Sys.getenv("GOOGLE_MAPS_API_KEY")
-
-# configure ggmap with api keys
-register_google(google.maps.api.key)
-register_stadiamaps(stadia.maps.api.key)
-
 # get background map
-map <- ggmap::get_googlemap(
+map <- get_googlemap(
   center = center, 
   zoom = 14, 
   maptype = "satellite"
 )
+ggmap(map)
 
-# display map
+# # export map
+# saveRDS(map, "data/oemap/mg_1_map.rds")
+```
+
+## Convert to 1km Buffer
+```{r}
+# read in the mini-grid sites
+mgs <- st_read("data/oemap/mgs_iea_114_with_cell_id.geojson")
+# convert geometry from a point to 1km buffer
+mgs <- mgs %>% st_buffer(1000)
+
+# calcualte the area of one of the mini-grid sites
+st_area(mgs[7,])
+
+# export the mini-grid sites with the buffer
+# note that this won't work if the file is already written
+st_write(mgs, "data/oemap/mgs_buffer_1km.geojson")
+```
+
+## Visualize the Mini-Grid Site with Buffer
+```{r}
+# read in the data
+mgs <- st_read("data/oemap/mgs_buffer_1km.geojson")
+
+sample_mg <- mgs[7,]
+
+# get the center
+center <- c(
+  lon = st_coordinates(st_centroid(sample_mg$geometry))[1, 1],
+  lat = st_coordinates(st_centroid(sample_mg$geometry))[1, 2]
+)
+
+# get a new satellite map centered around these coordinates
+map <- get_googlemap(
+  center = center, 
+  zoom = 15, 
+  maptype = "satellite"
+)
+
+# export the map variable as RDS
+saveRDS(map, "data/oemap/mg_7_satmap.rds")
+
 ggmap(map) + 
-  geom_sf(data = mgs[1,], fill = NA, color = "green", size = 3, inherit.aes = FALSE)
+  geom_sf(data = sample_mg, fill = NA, color = "yellow", lwd = 1, inherit.aes = FALSE)
+# export this figure
+ggsave("figures/oemap/mg_7_satmap.png", width = 12, height = 12, units = "in", dpi = 300)
 
-# export map as RDS
-saveRDS(map, "data/oemap/map.rds")
+rm(sample_mg, center, map)
+
 ```
 
 ## Analyze a Single Mini-Grid Site
@@ -273,22 +290,18 @@ saveRDS(map, "data/oemap/map.rds")
 mgs <- st_read("data/oemap/mgs_buffer_1km.geojson")
 
 # for the first minigrid site, pull out the grid cell id
-grid_cell_id <- mgs$grid_cell_id[1]
-sample_mg <- mgs[1, ]
+sample_mg <- mgs[7, ]
+st_area(sample_mg) # ensure it's close to pi km2 to ensure 1km buffer is right
 
 # create fileanme in format data/oemap/grid_cells_geojson/425749_geoms.geojson
-filename <- paste0("data/oemap/grid_cells_geojson/", grid_cell_id, "_geoms.geojson")
-
-# read in the file
+filename <- paste0("data/oemap/grid_cells_geojson/", sample_mg$grid_cell_id, "_geoms.geojson")
 grid_cell <- st_read(filename)
 
-# clean the geometries
-# grid_cell <- st_make_valid(grid_cell)
+# make sure the geometries are valid
+grid_cell <- st_make_valid(grid_cell)
 
 # grab just the features from grid_cell that intersect with the first mini-grid site
 inter <- st_intersection(grid_cell, sample_mg)
-inter$geometry[1]
-
 
 # calculate the mean of elec.access....
 mean(inter$elec.access....)
@@ -306,45 +319,67 @@ st_crs(inter) <- 4326
 inter$distance <- st_distance(inter, sample_mg_pt)
 
 # export inter as RDS
-saveRDS(inter, "data/oemap/inter.rds")
+saveRDS(inter, "data/oemap/inter_7.rds")
 ```
 
 ## Plot the Results
 ```{r}
-library(units)
-library(ggmap)
-
 # import data and map
-inter <- readRDS("data/oemap/inter.rds")
-map <- readRDS("data/oemap/map.rds")
-
+map <- readRDS("data/oemap/mg_7_satmap.rds")
+inter <- readRDS("data/oemap/inter_7.rds")
+inter <- inter %>%
+  mutate(prob_elec_access = elec.access....)
 
 # create a density plot of inter$elec.access....
 ggplot(inter) +
-  geom_density(aes(x = elec.access....), fill = "darkgreen", alpha = 0.5) +
+  geom_density(aes(x = prob_elec_access), fill = "darkgreen", alpha = 0.5) +
   ggtitle("Density Plot of Electricity Access Probability by Building at a Mini-Grid Site") +
   labs(x = "Electricity Access Probability (%)", y = "Density") +
-  theme_bw() +
-  theme(text = element_text(size = 24, family = "serif"), legend.position = "bottom")
+  theme_bw() 
+  # theme(text = element_text(size = 24, family = "serif"), legend.position = "bottom")
+ggsave("figures/oemap/density_by_building_7.png", width = 12, height = 6, units = "in", dpi = 300)
 
 # plot access probability by building with distance from village center
 ggplot(inter) +
-  geom_point(aes(x = distance, y = elec.access....)) +
-  geom_smooth(aes(x = distance, y = elec.access....), method = "gam", se = TRUE) +
+  geom_point(aes(x = distance, y = prob_elec_access)) +
+  geom_smooth(aes(x = distance, y = prob_elec_access), method = "gam", se = TRUE) +
   ggtitle("Electricity Access Probability by Building at a Mini-Grid Site") +
-  labs(x = "Distance from Village Center (m)", y = "Electricity Access Probability (%)") +
-  theme_bw() +
-  theme(text = element_text(size = 24, family = "serif"), legend.position = "bottom")
+  labs(x = "Distance from Village Center", y = "Electricity Access Probability (%)") +
+  theme_bw() 
+  # theme(text = element_text(size = 24, family = "serif"), legend.position = "bottom")
+ggsave("figures/oemap/access_prob_by_distance_7.png", width = 12, height = 6, units = "in", dpi = 300)
 
+# plot buildings
+ggplot() + 
+  geom_sf(data = inter, aes(fill = prob_elec_access), inherit.aes = FALSE) +
+  geom_sf(data = sample_mg, fill = NA, color="blue", inherit.aes = FALSE) +
+  # geom_sf(data = sample_mg_pt, color = "blue", size = 5, inherit.aes = FALSE) +
+  scale_fill_viridis_c() +
+  ggtitle("Electricity Access Probability by Building at a Mini-Grid Site") +
+  theme_bw() + 
+  # theme(text = element_text(size = 28, family = "serif")) +
+  # move legend to the bottom
+  theme(legend.position = "bottom")
+  # remove long and lat axis labels
+  # theme(axis.text.x = element_blank(), axis.text.y = element_blank()) 
+  # add a scale bar
+  # scalebar(x.min = left, x.max = right, y.min = bottom, y.max = top, dist = 1000, dist_unit = "m", st.dist = 0.1, st.dist_unit = "km")
+ggsave("figures/oemap/access_prob_by_building_geom_sf_7.png", width = 12, height = 12, units = "in", dpi = 300)
 
-# color by elec.access.... with virdis color scale
-inter <- inter %>%
-  rename(prob_elec_access = elec.access....)
-  
+# get bbox of inter
+bbox <- st_bbox(inter)
+names(bbox) <- c("left", "bottom", "right", "top")
+# get a new stadia map centered around these coordinates
+map <- get_stadiamap(
+  bbox = bbox, 
+  zoom = 17, 
+  maptype = "stamen_toner_lite"
+)
+# plot buildings with stadia background
 ggmap(map) +
   geom_sf(data = inter, aes(fill = prob_elec_access), inherit.aes = FALSE) +
   geom_sf(data = sample_mg, fill = NA, color="blue", inherit.aes = FALSE) +
-  geom_sf(data = sample_mg_pt, color = "blue", size = 5, inherit.aes = FALSE) +
+  # geom_sf(data = sample_mg_pt, color = "blue", size = 5, inherit.aes = FALSE) +
   scale_fill_viridis_c() +
   ggtitle("Electricity Access Probability by Building at a Mini-Grid Site") +
   theme_bw() + 
@@ -355,18 +390,8 @@ ggmap(map) +
   # theme(axis.text.x = element_blank(), axis.text.y = element_blank()) +
   # add a scale bar
   # scalebar(x.min = left, x.max = right, y.min = bottom, y.max = top, dist = 1000, dist_unit = "m", st.dist = 0.1, st.dist_unit = "km")
+ggsave("figures/oemap/access_prob_by_building_stadia_7.png", width = 12, height = 12, units = "in", dpi = 300)
 
-# redo this plot using a Stadia maps background map from ggmap
-# get the bounding box of the intersection
-bbox <- st_bbox(inter)
-bbox <- c(left = bbox["xmin"], bottom = bbox["ymin"], right = bbox["xmax"], top = bbox["ymax"])
-# get the stadia map
-stadia <- get_stadiamap(bbox, zoom = 12, maptype = "stamen_toner_lite")
-
-# # plot grid_cell with geom_sf
-# ggplot(grid_cell) +
-#   geom_sf() +
-#   theme_minimal()
 ```
 
 ## Loop Over All Mini-Grid Sites
@@ -509,5 +534,5 @@ summary(mgs$mean)
 nrow(mgs)
 
 # count the number of sites with < 50% mean
-mgs %>% filter(mean < 50) %>% count()
 ```
+mgs %>% filter(mean < 50) %>% count()
