@@ -44,6 +44,8 @@ pg <- pg %>% select(site_name, country, date_commissioned, source, geometry)
 
 # clean up cluber df
 glimpse(cluber)
+# keep only sites with status "Operating"
+cluber <- cluber %>% filter(status == "Operating")
 cluber <- cluber %>% select(site_name, country, date_commissioned, source, geometry)
 
 # combine
@@ -51,13 +53,13 @@ mgs <- bind_rows(cbil, pg, cluber)
 rm(cbil, pg, cluber)
 
 # export
-st_write(mgs, "data/mgs/mgs.geojson")
+st_write(mgs, "data/mgs/mgs_operational.geojson")
 ```
 
 ## Filter Mini-Grid Sites by Country
 ```{r}
 # read in mgs
-mgs <- st_read("data/mgs/mgs.geojson")
+mgs <- st_read("data/mgs/mgs_operational.geojson")
 # countries of interest
 iea <- c("Ghana", "Senegal", "Uganda")
 
@@ -76,10 +78,10 @@ rm(iea)
 # keeps 117 sites
 # count number of mgs per developer
 mgs %>% count(source)
-# 4 from cbil, 113 from cluber
+# 4 from cbil, 25 from cluber
 # count number per country
 mgs %>% count(country)
-# 6 for Ghana, 109 for Senegal, 2 for Uganda
+# 6 for Ghana, 21 for Senegal, 2 for Uganda
 
 # remove any two sites that are in the same location
 mgs <- mgs %>% distinct(site_name, .keep_all = TRUE)
@@ -92,18 +94,18 @@ ggplot(mgs) +
   theme_minimal()
 
 # export 
-st_write(mgs, "data/oemap/mgs_iea_114.geojson")
+st_write(mgs, "data/oemap/mgs_iea_29.geojson")
 ```
 
 ## Import OE Map GeoJSON Data
 ```{r}
 grid_cells <- st_read("data/oemap/grid_cells.geojson")
-mgs <- st_read("data/oemap/mgs_iea_114.geojson")
+mgs <- st_read("data/oemap/mgs_iea_29.geojson")
 
-# visualize the gridcells
-ggplot(grid_cells) +
-  geom_sf() +
-  theme_minimal()
+# # visualize the gridcells
+# ggplot(grid_cells) +
+#   geom_sf() +
+#   theme_minimal()
 
 # Clean geometries
 grid_cells <- st_make_valid(grid_cells)
@@ -116,10 +118,14 @@ grid_cells_mgs <- st_join(grid_cells, mgs, join = st_contains)
 grid_cells_mgs <- grid_cells_mgs %>% filter(!is.na(site_name))
 
 # export
-st_write(grid_cells_mgs, "data/oemap/grid_cells_mgs.geojson")
+st_write(grid_cells_mgs, "data/oemap/grid_cells_mgs_29.geojson", delete_dsn = TRUE)
+
+# remove objects
+rm(grid_cells, mgs)
 ```
 
 ## Clean Up the OE Map Download Links
+Todo: update this section now that the issue has been resolved in the GitHub repo.
 ```{r}
 # read in grid cells with mini-grid sites
 download_links <- read_csv("data/oemap/download_links.csv")
@@ -144,7 +150,7 @@ write_csv(download_links, "data/oemap/download_links_fix.csv")
 ## Download the Building Level Data
 ```{r}
 # read in the mg grid cells
-grid_cells_mgs <- st_read("data/oemap/grid_cells_mgs.geojson")
+grid_cells_mgs <- st_read("data/oemap/grid_cells_mgs_29.geojson")
 # read in the download links
 download_links <- read_csv("data/oemap/download_links_fix.csv")
 
@@ -194,10 +200,10 @@ st_crs(oedata) <- 4326
 st_write(oedata, "data/oemap/oedata.geojson")
 ```
 
-## Export the Mini-Grid Sites with a 1km Buffer
+## Export the Mini-Grid Sites with Grid Cell IDs
 ```{r}
 # read in the grid cells mgs
-mgs <- st_read("data/oemap/mgs_iea_114.geojson")
+mgs <- st_read("data/oemap/mgs_iea_29.geojson")
 mgs_grid_cells <- st_read("data/oemap/grid_cells_mgs.geojson")
 # convert mgs_grid_cells to df
 mgs_grid_cells <- st_drop_geometry(mgs_grid_cells)
@@ -205,59 +211,44 @@ mgs_grid_cells <- mgs_grid_cells %>% select(site_name, grid_cell_id)
 
 # for each mini-grid in mgs pull in the grid_cell_id from mgs_grid_cells matching by site_name
 mgs <- mgs %>% left_join(mgs_grid_cells, by = "site_name")
-rm(mgs_grid_cells)
 # clean the geometries
 mgs <- st_make_valid(mgs)
+# remove a duplicate site with grid_cell_id =  431520
+mgs <- mgs %>% filter(grid_cell_id != 431520)
+# remove sites with NA grid_cell_id
+mgs <- mgs %>% filter(!is.na(grid_cell_id))
 
 # export mgs with grid cell ids
-st_write(mgs, "data/oemap/mgs_iea_114_with_cell_id.geojson")
-```
+st_write(mgs, "data/oemap/mgs_iea_28_with_cell_id.geojson", delete_dsn = TRUE)
 
-
-## Get Background Map to Visualize a Mini-Grid Site
-```{r}
-# read in the mini-grid sites
-mgs <- st_read("data/oemap/mgs_iea_114_with_cell_id.geojson")
-
-# get the center of the first mini-grid site
-center <- c(
-  lon = st_coordinates(mgs$geometry[1])[1, 1],
-  lat = st_coordinates(mgs$geometry[1])[1, 2]
-)
-
-# get background map
-map <- get_googlemap(
-  center = center, 
-  zoom = 14, 
-  maptype = "satellite"
-)
-ggmap(map)
-
-# # export map
-# saveRDS(map, "data/oemap/mg_1_map.rds")
+# remove objects
+rm(mgs, mgs_grid_cells)
 ```
 
 ## Convert to 1km Buffer
 ```{r}
 # read in the mini-grid sites
-mgs <- st_read("data/oemap/mgs_iea_114_with_cell_id.geojson")
+mgs <- st_read("data/oemap/mgs_iea_28_with_cell_id.geojson")
 # convert geometry from a point to 1km buffer
 mgs <- mgs %>% st_buffer(1000)
 
 # calcualte the area of one of the mini-grid sites
-st_area(mgs[7,])
+st_area(mgs[14,])
 
 # export the mini-grid sites with the buffer
 # note that this won't work if the file is already written
-st_write(mgs, "data/oemap/mgs_buffer_1km.geojson")
+st_write(mgs, "data/oemap/mgs_28_buffer_1km.geojson", delete_dsn = TRUE)
 ```
+###############################################################################
+###############################################################################
+###############################################################################
+
 
 ## Visualize the Mini-Grid Site with Buffer
 ```{r}
 # read in the data
-mgs <- st_read("data/oemap/mgs_buffer_1km.geojson")
-
-sample_mg <- mgs[7,]
+mgs <- st_read("data/oemap/mgs_28_buffer_1km.geojson")
+sample_mg <- mgs[14,]
 
 # get the center
 center <- c(
@@ -268,29 +259,28 @@ center <- c(
 # get a new satellite map centered around these coordinates
 map <- get_googlemap(
   center = center, 
-  zoom = 15, 
+  zoom = 16, 
   maptype = "satellite"
 )
-
+ggmap(map)
 # export the map variable as RDS
-saveRDS(map, "data/oemap/mg_7_satmap.rds")
+saveRDS(map, "data/oemap/mg_14_map.rds")
 
 ggmap(map) + 
   geom_sf(data = sample_mg, fill = NA, color = "yellow", lwd = 1, inherit.aes = FALSE)
 # export this figure
-ggsave("figures/oemap/mg_7_satmap.png", width = 12, height = 12, units = "in", dpi = 300)
+ggsave("figures/oemap/mg_14_satmap.png", width = 12, height = 12, units = "in", dpi = 300)
 
-rm(sample_mg, center, map)
-
+rm(sample_mg, map, mgs, center)
 ```
 
 ## Analyze a Single Mini-Grid Site
 ```{r}
 # read back in mg
-mgs <- st_read("data/oemap/mgs_buffer_1km.geojson")
+mgs <- st_read("data/oemap/mgs_28_buffer_1km.geojson")
 
 # for the first minigrid site, pull out the grid cell id
-sample_mg <- mgs[7, ]
+sample_mg <- mgs[14, ]
 st_area(sample_mg) # ensure it's close to pi km2 to ensure 1km buffer is right
 
 # create fileanme in format data/oemap/grid_cells_geojson/425749_geoms.geojson
@@ -319,27 +309,32 @@ st_crs(inter) <- 4326
 inter$distance <- st_distance(inter, sample_mg_pt)
 
 # export inter as RDS
-saveRDS(inter, "data/oemap/inter_7.rds")
+saveRDS(inter, "data/oemap/inter_14.rds")
+
+# remove objects
+rm(sample_mg, filename, grid_cell, inter, sample_mg_pt, mgs)
 ```
 
 ## Plot the Results
 ```{r}
 # import data and map
-map <- readRDS("data/oemap/mg_7_satmap.rds")
-inter <- readRDS("data/oemap/inter_7.rds")
+mgs <- st_read("data/oemap/mgs_28_buffer_1km.geojson")
+sample_mg <- mgs[14, ]
+map <- readRDS("data/oemap/mg_14_map.rds")
+inter <- readRDS("data/oemap/inter_14.rds")
 inter <- inter %>%
   mutate(prob_elec_access = elec.access....)
 
-# create a density plot of inter$elec.access....
+# density plot of inter$elec.access....
 ggplot(inter) +
   geom_density(aes(x = prob_elec_access), fill = "darkgreen", alpha = 0.5) +
   ggtitle("Density Plot of Electricity Access Probability by Building at a Mini-Grid Site") +
   labs(x = "Electricity Access Probability (%)", y = "Density") +
   theme_bw() 
   # theme(text = element_text(size = 24, family = "serif"), legend.position = "bottom")
-ggsave("figures/oemap/density_by_building_7.png", width = 12, height = 6, units = "in", dpi = 300)
+ggsave("figures/oemap/density_by_building_14.png", width = 12, height = 6, units = "in", dpi = 300)
 
-# plot access probability by building with distance from village center
+# scatterplot with gam of access probability by building with distance from village center
 ggplot(inter) +
   geom_point(aes(x = distance, y = prob_elec_access)) +
   geom_smooth(aes(x = distance, y = prob_elec_access), method = "gam", se = TRUE) +
@@ -347,12 +342,12 @@ ggplot(inter) +
   labs(x = "Distance from Village Center", y = "Electricity Access Probability (%)") +
   theme_bw() 
   # theme(text = element_text(size = 24, family = "serif"), legend.position = "bottom")
-ggsave("figures/oemap/access_prob_by_distance_7.png", width = 12, height = 6, units = "in", dpi = 300)
+ggsave("figures/oemap/access_prob_by_distance_14.png", width = 12, height = 6, units = "in", dpi = 300)
 
-# plot buildings
+# buildings sf with fill by prob_elec_access no background
 ggplot() + 
   geom_sf(data = inter, aes(fill = prob_elec_access), inherit.aes = FALSE) +
-  geom_sf(data = sample_mg, fill = NA, color="blue", inherit.aes = FALSE) +
+  # geom_sf(data = sample_mg, fill = NA, color="blue", inherit.aes = FALSE) +
   # geom_sf(data = sample_mg_pt, color = "blue", size = 5, inherit.aes = FALSE) +
   scale_fill_viridis_c() +
   ggtitle("Electricity Access Probability by Building at a Mini-Grid Site") +
@@ -364,18 +359,9 @@ ggplot() +
   # theme(axis.text.x = element_blank(), axis.text.y = element_blank()) 
   # add a scale bar
   # scalebar(x.min = left, x.max = right, y.min = bottom, y.max = top, dist = 1000, dist_unit = "m", st.dist = 0.1, st.dist_unit = "km")
-ggsave("figures/oemap/access_prob_by_building_geom_sf_7.png", width = 12, height = 12, units = "in", dpi = 300)
+ggsave("figures/oemap/access_prob_by_building_geom_sf_14_no_arc.png", width = 12, height = 12, units = "in", dpi = 300)
 
-# get bbox of inter
-bbox <- st_bbox(inter)
-names(bbox) <- c("left", "bottom", "right", "top")
-# get a new stadia map centered around these coordinates
-map <- get_stadiamap(
-  bbox = bbox, 
-  zoom = 17, 
-  maptype = "stamen_toner_lite"
-)
-# plot buildings with stadia background
+# buildings sf with fill by prob_elec_access satellite background
 ggmap(map) +
   geom_sf(data = inter, aes(fill = prob_elec_access), inherit.aes = FALSE) +
   geom_sf(data = sample_mg, fill = NA, color="blue", inherit.aes = FALSE) +
@@ -390,16 +376,15 @@ ggmap(map) +
   # theme(axis.text.x = element_blank(), axis.text.y = element_blank()) +
   # add a scale bar
   # scalebar(x.min = left, x.max = right, y.min = bottom, y.max = top, dist = 1000, dist_unit = "m", st.dist = 0.1, st.dist_unit = "km")
-ggsave("figures/oemap/access_prob_by_building_stadia_7.png", width = 12, height = 12, units = "in", dpi = 300)
-
+ggsave("figures/oemap/access_prob_by_building_stadia_14.png", width = 12, height = 12, units = "in", dpi = 300)
 ```
 
 ## Loop Over All Mini-Grid Sites
 ```{r}
 # read in the mini-grid sites
-mgs <- st_read("data/oemap/mgs_buffer_1km.geojson")
+mgs <- st_read("data/oemap/mgs_28_buffer_1km.geojson")
 # filter out nas
-mgs <- mgs %>% filter(!is.na(grid_cell_id))
+# mgs <- mgs %>% filter(!is.na(grid_cell_id))
 
 # convert to list for lapply
 mgs_list <- lapply(1:nrow(mgs), function(i) mgs[i, , drop = FALSE])
@@ -428,8 +413,22 @@ process_minigrid_site <- function(mg_feature) {
     count_elec_access <- nrow(inter)
     sd_elec_access <- sd(inter$elec.access...., na.rm = TRUE)
     
+    # find the centroid of sample_mg as it's own sf
+    mg_feature_pt <- st_centroid(mg_feature)
+    # set crs of mg_feature to 4326
+    st_crs(mg_feature) <- 4326
+    st_crs(inter) <- 4326
+    # caculate the distance from the village center to each building center
+    inter$distance <- st_distance(inter, mg_feature_pt)
+
     # Return a list containing the results
-    return(list(mean = mean_elec_access, count = count_elec_access, sd = sd_elec_access))
+    return(list(
+      mean = mean_elec_access, 
+      count = count_elec_access, 
+      sd = sd_elec_access,
+      distance = inter$distance,
+      prob_elec_access = inter$elec.access....
+    ))
 }
 
 # Example usage with lapply (assuming 'mgs' is already read and available)
@@ -450,34 +449,35 @@ mgs$sd <- as.numeric(mgs$sd)
 
 glimpse(mgs)
 # save mgs
-st_write(mgs, "data/oemap/mgs_buffer_results.geojson")
+st_write(mgs, "data/oemap/mgs_28_buffer_results.geojson")
 ```
 
 ## Look at the results
 ```{r}
-mgs <- st_read("data/oemap/mgs_buffer_results.geojson")
+mgs <- st_read("data/oemap/mgs_28_buffer_results.geojson")
 # filter out the NAs
 mgs <- mgs %>% filter(!is.na(mean))
+# 27 left
 
 # plot the distribution of mean elec.access with density, fill by country
 density_by_country <- ggplot(mgs) +
   geom_density(aes(x = mean, fill = country), alpha = 0.5, ) +
   ggtitle("Density Plot of Mean Electricity Access Probability by Mini-Grid Site") +
   labs(x = "Mean Electricity Access Probability of Mini-Grid Sites (%)", y = "Density") +
-  theme_bw() +
-  theme(text = element_text(size = 24, family = "serif"), legend.position = "bottom")
+  theme_bw()
+  # theme(text = element_text(size = 24, family = "serif"), legend.position = "bottom")
 density_by_country
-ggsave("figures/oemap/density_by_country.png", density_by_country, width = 16, height = 8, units = "in", dpi = 300)
+ggsave("figures/oemap/density_by_country_14.png", density_by_country, width = 16, height = 8, units = "in", dpi = 300)
 
 # density plot of mean, fill with darkgreen
 density_overall <- ggplot(mgs) +
   geom_density(aes(x = mean), fill = "darkgreen", alpha = 0.5) +
   ggtitle("Density Plot of Mean Electricity Access Probability by Mini-Grid Site") +
   labs(x = "Mean Electricity Access Probability of Mini-Grid Sites (%)", y = "Density") +
-  theme_bw() +
-  theme(text = element_text(size = 24, family = "serif"), legend.position = "bottom")
+  theme_bw()
+  # theme(text = element_text(size = 24, family = "serif"), legend.position = "bottom")
 density_overall
-ggsave("figures/oemap/density_overall.png", density_overall, width = 16, height = 8, units = "in", dpi = 300)
+ggsave("figures/oemap/density_overall_14.png", density_overall, width = 16, height = 8, units = "in", dpi = 300)
 
 # create a summary table of the mean, count, and sd by coutnry
 mgs_df <- st_drop_geometry(mgs)
@@ -495,6 +495,14 @@ mgs_summary <- mgs_df %>%
   # print entire df, don't let it get truncated
 print(mgs_summary, width = Inf)
 
+# scatterplot of prob_elec_access by distance from village center
+ggplot(mgs) +
+  geom_point(aes(x = distance, y = prob_elec_access)) +
+  # geom_smooth(aes(x = distance, y = prob_elec_access), method = "gam", se = TRUE) +
+  ggtitle("Electricity Access Probability by Building at a Mini-Grid Site") +
+  labs(x = "Distance from Village Center", y = "Electricity Access Probability (%)") +
+  theme_bw()
+  # theme(text = element_text(size = 24, family = "serif"), legend.position = "bottom")
 ```
 
 ## Other Charts Not Used in Paper
@@ -534,5 +542,15 @@ summary(mgs$mean)
 nrow(mgs)
 
 # count the number of sites with < 50% mean
-```
 mgs %>% filter(mean < 50) %>% count()
+```
+
+## To Do
+- Look at the other sites with high numbers of buildings and low access probabilities
+- Map them and visualize them to see if they look like they would have a mini-grid
+- Google about them to see if I can find any info confirming that there is a mini-grid there
+- Cherry pick one to include in the paper
+- Or maybe get more nuanced about it
+
+- Number 27 Bani: https://kowryenergy.com/ > just 9 buildings!
+
