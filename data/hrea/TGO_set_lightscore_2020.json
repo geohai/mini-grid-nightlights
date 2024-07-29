@@ -1,0 +1,77 @@
+{
+  "stac_version": "1.0.0",
+  "stac_extensions": [],
+  "type": "Feature",
+  "id": "TGO_set_lightscore_2020",
+  "bbox": [
+    -0.14585100000000,
+    6.10953602320000,
+    1.80664915620000,
+    11.13898087000000
+  ],
+  "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+      [
+        [
+          -0.14585100000000,
+          6.10953602320000
+        ],
+        [
+          1.80664915620000,
+          6.10953602320000
+        ],
+        [
+          1.80664915620000,
+          11.13898087000000
+        ],
+        [
+          -0.14585100000000,
+          11.13898087000000
+        ],
+        [
+          -0.14585100000000,
+          6.10953602320000
+        ]
+      ]
+    ]
+  },
+  "properties": {
+    "title": "Settlement lightscores for TGO, 2020",
+    "description": "Settlement lightscores in 2020 for Togo",
+    "datetime": null,
+    "start_datetime": "2020-01-01T00:00:00.000Z",
+    "end_datetime": "2020-12-31T23:59:59.999Z"
+  },
+  "collection": "TGO-TGO-set_lightscore-collection",
+  "links": [
+    {
+      "rel": "collection",
+      "href": "./collection.json",
+      "type": "application/json",
+      "title": "TGO-TGO set_lightscore Collection"
+    },
+    {
+      "rel": "root",
+      "href": "././././catalog.json",
+      "type": "application/json",
+      "title": "HREA Catalog"
+    },
+    {
+      "rel": "parent",
+      "href": "./collection.json",
+      "type": "application/json",
+      "title": "TGO-TGO set_lightscore Collection"
+    }
+  ],
+  "assets": {
+    "set_lightscore": {
+      "href": "https://globalnightlight.s3.amazonaws.com/HREAv1.1_COGs/TGO/TGO/set_lightscore/TGO_set_lightscore_2020.tif",
+      "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+      "title": "Settlement lightscores for TGO, 2020",
+      "roles": [
+        "data"
+      ]
+    }
+  }
+}

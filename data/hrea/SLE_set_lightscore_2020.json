@@ -1,0 +1,77 @@
+{
+  "stac_version": "1.0.0",
+  "stac_extensions": [],
+  "type": "Feature",
+  "id": "SLE_set_lightscore_2020",
+  "bbox": [
+    -13.29847222200000,
+    6.92097222200000,
+    -10.26763886400000,
+    9.99986113600000
+  ],
+  "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+      [
+        [
+          -13.29847222200000,
+          6.92097222200000
+        ],
+        [
+          -10.26763886400000,
+          6.92097222200000
+        ],
+        [
+          -10.26763886400000,
+          9.99986113600000
+        ],
+        [
+          -13.29847222200000,
+          9.99986113600000
+        ],
+        [
+          -13.29847222200000,
+          6.92097222200000
+        ]
+      ]
+    ]
+  },
+  "properties": {
+    "title": "Settlement lightscores for SLE, 2020",
+    "description": "Settlement lightscores in 2020 for Sierra Leone",
+    "datetime": null,
+    "start_datetime": "2020-01-01T00:00:00.000Z",
+    "end_datetime": "2020-12-31T23:59:59.999Z"
+  },
+  "collection": "SLE-SLE-set_lightscore-collection",
+  "links": [
+    {
+      "rel": "collection",
+      "href": "./collection.json",
+      "type": "application/json",
+      "title": "SLE-SLE set_lightscore Collection"
+    },
+    {
+      "rel": "root",
+      "href": "././././catalog.json",
+      "type": "application/json",
+      "title": "HREA Catalog"
+    },
+    {
+      "rel": "parent",
+      "href": "./collection.json",
+      "type": "application/json",
+      "title": "SLE-SLE set_lightscore Collection"
+    }
+  ],
+  "assets": {
+    "set_lightscore": {
+      "href": "https://globalnightlight.s3.amazonaws.com/HREAv1.1_COGs/SLE/SLE/set_lightscore/SLE_set_lightscore_2020.tif",
+      "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+      "title": "Settlement lightscores for SLE, 2020",
+      "roles": [
+        "data"
+      ]
+    }
+  }
+}

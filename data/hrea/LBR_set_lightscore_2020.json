@@ -1,0 +1,77 @@
+{
+  "stac_version": "1.0.0",
+  "stac_extensions": [],
+  "type": "Feature",
+  "id": "LBR_set_lightscore_2020",
+  "bbox": [
+    -11.46819444500000,
+    4.35625000000000,
+    -7.37569441200000,
+    8.54125003300000
+  ],
+  "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+      [
+        [
+          -11.46819444500000,
+          4.35625000000000
+        ],
+        [
+          -7.37569441200000,
+          4.35625000000000
+        ],
+        [
+          -7.37569441200000,
+          8.54125003300000
+        ],
+        [
+          -11.46819444500000,
+          8.54125003300000
+        ],
+        [
+          -11.46819444500000,
+          4.35625000000000
+        ]
+      ]
+    ]
+  },
+  "properties": {
+    "title": "Settlement lightscores for LBR, 2020",
+    "description": "Settlement lightscores in 2020 for Liberia",
+    "datetime": null,
+    "start_datetime": "2020-01-01T00:00:00.000Z",
+    "end_datetime": "2020-12-31T23:59:59.999Z"
+  },
+  "collection": "LBR-LBR-set_lightscore-collection",
+  "links": [
+    {
+      "rel": "collection",
+      "href": "./collection.json",
+      "type": "application/json",
+      "title": "LBR-LBR set_lightscore Collection"
+    },
+    {
+      "rel": "root",
+      "href": "././././catalog.json",
+      "type": "application/json",
+      "title": "HREA Catalog"
+    },
+    {
+      "rel": "parent",
+      "href": "./collection.json",
+      "type": "application/json",
+      "title": "LBR-LBR set_lightscore Collection"
+    }
+  ],
+  "assets": {
+    "set_lightscore": {
+      "href": "https://globalnightlight.s3.amazonaws.com/HREAv1.1_COGs/LBR/LBR/set_lightscore/LBR_set_lightscore_2020.tif",
+      "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+      "title": "Settlement lightscores for LBR, 2020",
+      "roles": [
+        "data"
+      ]
+    }
+  }
+}

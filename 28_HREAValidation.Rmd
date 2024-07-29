@@ -1,0 +1,352 @@
+# Validation the HREA Model on Mini-Grid Data
+https://hrea.isr.umich.edu/data.html
+
+## Load Libraries
+```{r}
+# load libraries
+library(tidyverse)
+library(sf)
+library(terra)
+library(ggmap)
+library(dotenv)
+```
+
+## Configure the Maps APIs
+```{r}
+# read in env file
+load_dot_env(".env")
+google.maps.api.key <- Sys.getenv("GOOGLE_MAPS_API_KEY")
+stadia.maps.api.key <- Sys.getenv("STADIA_MAPS_API_KEY")
+register_google(google.maps.api.key)
+register_stadiamaps(stadia.maps.api.key)
+rm(google.maps.api.key, stadia.maps.api.key)
+```
+
+
+```{bash}
+# list the contents of the bucket
+aws s3 ls s3://globalnightlight/HREAv1.1_COGs/ --no-sign-request
+
+# download the country catalog
+wget -O data/hrea/country_catalog.json https://globalnightlight.s3.amazonaws.com/HREAv1.1_COGs/catalog.json
+
+# download the data catalog for Sierra Leone data
+# iso3 code is SLE
+# set the country_iso3 variable to the iso3 code of the country
+country_iso3=SLE
+curl https://globalnightlight.s3.amazonaws.com/HREAv1.1_COGs/${country_iso3}/catalog.json
+# useless, just a list of parent files
+
+# list directory contents
+country_iso3=SLE
+aws s3 ls s3://globalnightlight/HREAv1.1_COGs/${country_iso3}/${country_iso3}/ --no-sign-request
+```
+
+rade9lnmu/
+set_lightscore/
+set_prplit/
+set_zscore/
+SLE_set_pop.json
+SLE_set_pop.tif
+catalog.json
+
+HREAv1.1_COGs/country_iso3/country_iso3/cog_id_rade9lnmu_year.tif: Nighttime light annual composite for all cells in a locale.
+HREAv1.1_COGs/country_iso3/country_iso3/cog_id_set_zscore_year.tif: Statistically estimated brightness levels for settlements. Higher levels indicate more robust usage of outdoor lighting, which is correlated with overall energy consumption.
+HREAv1.1_COGs/country_iso3/country_iso3/cog_id_set_lightscore_year.tif: Predicted likelihood that a settlement is electrified (0 to 1).
+HREAv1.1_COGs/country_iso3/country_iso3/cog_id_set_prplit_year.tif: Proportion of nights a settlement is statistically brighter than matched uninhabited areas.
+
+We want the lightscore.
+
+```{bash}
+# inspect the lightscore set
+country_iso3=SLE
+aws s3 ls s3://globalnightlight/HREAv1.1_COGs/${country_iso3}/${country_iso3}/set_lightscore/ --no-sign-request
+```
+
+SLE_set_lightscore_2013.json
+SLE_set_lightscore_2013.tif
+SLE_set_lightscore_2014.json
+SLE_set_lightscore_2014.tif
+SLE_set_lightscore_2015.json
+SLE_set_lightscore_2015.tif
+SLE_set_lightscore_2016.json
+SLE_set_lightscore_2016.tif
+SLE_set_lightscore_2017.json
+SLE_set_lightscore_2017.tif
+SLE_set_lightscore_2018.json
+SLE_set_lightscore_2018.tif
+SLE_set_lightscore_2019.json
+SLE_set_lightscore_2019.tif
+SLE_set_lightscore_2020.json
+SLE_set_lightscore_2020.tif
+collection.json
+
+```{bash}
+# download the lightscore data for 2020
+country_iso3=SLE
+year=2020
+aws s3 cp s3://globalnightlight/HREAv1.1_COGs/${country_iso3}/${country_iso3}/set_lightscore/${country_iso3}_set_lightscore_${year}.tif data/hrea/
+aws s3 cp s3://globalnightlight/HREAv1.1_COGs/${country_iso3}/${country_iso3}/set_lightscore/${country_iso3}_set_lightscore_${year}.json data/hrea/
+```
+
+## Read in the Lightscore Data
+```{r}
+# read in the lightscore data as a geotiff
+lightscore <- rast("data/hrea/SLE_set_lightscore_2020.tif")
+
+# visualize
+plot(lightscore)
+
+# get the spatial resolution
+res(lightscore)
+# 0.0002777778 0.0002777778
+# about 30 meters
+# get the crs
+crs(lightscore)
+# ESPG 4326, WGS 84, nice
+```
+
+## Read in Mini-Grid Locations
+```{r}
+# read in the mini-grid locations
+mgs <- vect("data/mgs/mgs_operational.geojson")
+
+# print the first mini-grid
+mgs_sl <- mgs[mgs$country == "Sierra Leone"]
+# 54 mini-grids
+
+# plot the mini-grids and the lightscore
+# set 0.5 to the max value
+plot(mgs_sl, add = TRUE, col = "blue")
+
+# convert date_commissioned to a date
+mgs_sl$date_commissioned <- as.Date(mgs_sl$date_commissioned)
+# keep just mini-grids from 2019 or earlier
+mgs_sl <- mgs_sl[mgs_sl$date_commissioned <= "2019-12-31", ]
+mgs_sl
+# 18 mini-grids
+
+# create a 300m buffer around the mini-grid points
+mgs_sl_buff <- buffer(mgs_sl, 300)
+mgs_sl_buff_1000 <- buffer(mgs_sl, 1000)
+
+# sample the lightscore at the mini-grid locations
+result_mean <- terra::extract(lightscore, mgs_sl_buff_1000, fun = mean, na.rm = TRUE)
+result_max <- terra::extract(lightscore, mgs_sl_buff_1000, fun = max, na.rm = TRUE)
+
+# for each, collect the mean and max lightscore
+# most generous is the max 1000m, most conservative is the mean 1000m
+# join into the SpatVec mgs_sl
+mgs_sl$lightscore_mean_1000 <- result_mean$layer
+mgs_sl$lightscore_max_1000 <- result_max$layer
+
+mgs_sl
+
+# convert mgs_sl to a data frame
+# create a density plot of the lightscore
+ggplot(as.data.frame(mgs_sl)) +
+  geom_histogram(aes(lightscore_mean_1000), binwidth = 0.1, fill = "darkgreen", col = "darkgreen", alpha = 0.5) +
+  geom_histogram(aes(lightscore_max_1000), binwidth = 0.1, fill = "darkblue", col = "darkblue", alpha = 0.5) +
+  theme_bw() +
+  labs(
+    title = "Density of Lightscore for Mini-Grids in Sierra Leone",
+    x = "% Likelihood of Electrification ('Lightscore')",
+    y = "Count"
+  ) +
+  # y ticks every 1, x tickets every 0.1
+  scale_y_continuous(breaks = seq(0, 7, 1)) +
+  scale_x_continuous(breaks = seq(0, 1, 0.1)) +
+  geom_vline(xintercept = 0.5, linetype = "dashed", color = "red") +
+  # add legend 
+#   scale_fill_manual(values = c("darkgreen", "darkblue"), labels = c("Mean 1000m", "Max 1000m"))
+```
+
+## Zoom into a Single Mini-Grid
+Number 16 and 5 have mean scores > 0.5
+Number 12, 11, and 3 have low maxes < 0.1
+```{r}
+high <- mgs_sl_buff[16,]
+high$site_name # "Sahn"
+
+# buffer high by another 500 meters
+high_buff <- buffer(high, 2000)
+# clip lightscore to the extent of the high mini-grid
+lightscore_high <- crop(lightscore, high_buff)
+# plot the lightscore with the extent of high
+# use a continuous color scale for lightscore
+# plot just the outer border of high in blue
+# plot(lightscore_high, col = hcl.colors(100))
+# make the middle transparent, the border blue
+# plot(high, add = TRUE, col = "darkgreen", alpha = 0.1)
+
+# get the raster of the google satellite image for this extent with ggmap
+# get the extent of the high mini-grid
+ext_high <- terra::ext(high_buff)
+# get the center of the extent
+center_high <- c(xmin(ext_high) + (xmax(ext_high) - xmin(ext_high)) / 2, ymin(ext_high) + (ymax(ext_high) - ymin(ext_high)) / 2)
+center_high
+# get the google satellite image
+
+sat_map_high <- ggmap::get_googlemap(
+    center = center_high, 
+    zoom = 16, 
+    maptype = "satellite",
+    scale = 2,
+    size = c(640, 640)
+)
+sat_rast_low <- rast(sat_map_low)
+plot(sat_rast_low)
+plot(lightscore_high, col = hcl.colors(100), add = TRUE, alpha = 0.5)
+plot(high, add = TRUE, col = "darkgreen", alpha = 0.0)
+```
+
+## Check Out a Low Probability Mini-Grid
+```{r}
+low <- mgs_sl_buff[12,]
+low$site_name # "Kaordu"
+
+low_buff <- buffer(low, 2000)
+lightscore_low <- crop(lightscore, low_buff)
+
+ext_low <- terra::ext(low_buff)
+center_low <- c(xmin(ext_low) + (xmax(ext_low) - xmin(ext_low)) / 2, ymin(ext_low) + (ymax(ext_low) - ymin(ext_low)) / 2)
+
+sat_map_low <- ggmap::get_googlemap(
+    center = center_low, 
+    zoom = 16, 
+    maptype = "satellite",
+    scale = 2,
+    size = c(640, 640)
+)
+sat_rast_low <- rast(sat_map_low)
+plot(sat_rast_low)
+plot(lightscore_low, col = hcl.colors(100), add = TRUE, alpha = 0.5)
+plot(low, add = TRUE, col = "darkgreen", alpha = 0.0)
+```
+
+## Find a Mini-Grid that has Low Lightscore
+```{r}
+low <- mgs_sl_buff[12,]
+low$site_name # "Kaordu"
+
+usage <- read.csv("data/usage/pg_monthly_site_data_clean.csv")
+glimpse(usage)
+unique(usage$Site)
+low_usage <- usage %>%
+    filter(Site == "Kaordu") %>%
+    mutate(Year.Month = as.Date(Year.Month)) %>%
+    filter(Year.Month <= "2020-12-31")
+
+# plot the usage
+ggplot(low_usage) +
+    geom_col(aes(Year.Month, Total.Consumption, fill = Total.Consumption)) +
+    scale_fill_viridis_c() +
+    theme_bw() +
+    labs(
+        title = "Monthly Usage for Mini-Grid in Kaordu, Sierra Leone",
+        x = "Date",
+        y = "kWh"
+    )
+```
+
+## Thoughts
+1. Get all of the mini-grids that are operational and commissioned 2019 Or earlier.
+2. Get a list of all of the countries with mini-grids
+3. Download the 2020 rasters for each of these countries
+4. For each country, get the lightscore for each mini-grid
+5. Compare the lightscore to the mini-grid data
+6. Plot some individual mini-grids where it does well and where it does poorly
+7. Redo the analysis just with CrossBoundary mini-grids for a blog post
+
+## Scale Up Analysis to All Mini-Grids
+```{r}
+# read in minigrids
+mgs <- vect("data/mgs/mgs_operational.geojson")
+mgs # 624 mini-grids
+mgs$date_commissioned <- as.Date(mgs$date_commissioned)
+mgs_pre_2020 <- mgs[mgs$date_commissioned <= "2019-12-31", ]
+mgs_pre_2020 # 474 mini-grids
+# export SpatVector to geojson
+writeVector(mgs_pre_2020, "data/mgs/mgs_operational_pre_2020.geojson", filetype = "geojson")
+rm(mgs)
+
+# remove any with na country
+mgs_pre_2020 <- mgs_pre_2020[!is.na(mgs_pre_2020$country), ] # 473
+
+# get the unique countries
+countries <- as.data.frame(unique(mgs_pre_2020$country))
+names(countries) <- "country"
+countries # 20 countries
+
+# download the ISO3 codes for all countries from the internet
+country_codes <- read.csv("https://raw.githubusercontent.com/datasets/country-codes/master/data/country-codes.csv")
+
+# join the country codes to the countries
+countries_w_codes <- left_join(
+    countries, 
+    country_codes, 
+    by = c("country" = "UNTERM.English.Short")) %>%
+    select(country, ISO3166.1.Alpha.3)
+
+countries_w_codes[countries_w_codes$country == "Tanzania", "ISO3166.1.Alpha.3"] <- "TZA"
+countries_w_codes[countries_w_codes$country == "DR Congo", "ISO3166.1.Alpha.3"] <- "COD"
+# export 
+write.csv(countries_w_codes, "data/hrea/countries.csv", row.names = FALSE)
+```
+
+## Download the Lightscore Data for All Countries with Mini-Grids
+```{bash}
+year=2020
+
+# Extract ISO3 codes from the CSV file, removing quotes
+country_iso3s=$(tail -n +2 data/hrea/countries.csv | cut -d "," -f 2 | tr -d '"')
+
+for country_iso3 in $country_iso3s
+do
+    # Use the extracted ISO3 codes to construct the S3 paths
+    aws s3 cp s3://globalnightlight/HREAv1.1_COGs/${country_iso3}/${country_iso3}/set_lightscore/${country_iso3}_set_lightscore_${year}.tif data/hrea/
+    aws s3 cp s3://globalnightlight/HREAv1.1_COGs/${country_iso3}/${country_iso3}/set_lightscore/${country_iso3}_set_lightscore_${year}.json data/hrea/
+done
+```
+
+## Read in the Lightscore Data for All Countries
+```{r}
+countries_w_codes <- read.csv("data/hrea/countries.csv")
+mgs_pre_2020 <- vect("data/mgs/mgs_operational_pre_2020.geojson")
+
+# lightscore <- rast("data/hrea/SLE_set_lightscore_2020.tif")
+
+# loop over country codes, read in files
+for (country_iso3 in countries_w_codes$ISO3166.1.Alpha.3) {
+    # read in the lightscore data as a geotiff
+    print(paste0("Reading in country: ", country_iso3))
+    ls <- rast(paste0("data/hrea/", country_iso3, "_set_lightscore_2020.tif"))
+
+    # # merge
+    # print(paste0("Merging country: ", country_iso3))
+    # lightscore <- terra::mosaic(lightscore, ls)
+
+    # # get the mini-grids from this country
+    country <- countries_w_codes$country[countries_w_codes$ISO3166.1.Alpha.3 == country_iso3]
+    print(paste0("Country: ", country))
+    mgs_country <- mgs_pre_2020[mgs_pre_2020$country == country, ]
+    print(paste0("Number of mini-Grids in this country: ", nrow(mgs_country)))
+
+    # buffer the mini-grids
+    # extract the values (max and mean)
+    # join to the mini-grids
+    # export to a result var
+    # plot
+}
+
+
+lightscore
+```
+
+## To Do
+- Loop over all the countries
+- Read in the lightscore data
+- Buffer the mini-grids
+- Find the mean and max lightscores in a 1km buffer
+- Join the lightscores to the mini-grids
+- Plot them

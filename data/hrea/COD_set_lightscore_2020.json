@@ -1,0 +1,77 @@
+{
+  "stac_version": "1.0.0",
+  "stac_extensions": [],
+  "type": "Feature",
+  "id": "COD_set_lightscore_2020",
+  "bbox": [
+    12.20662880000000,
+    -13.45553853620000,
+    31.30579699460000,
+    5.38585186000000
+  ],
+  "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+      [
+        [
+          12.20662880000000,
+          -13.45553853620000
+        ],
+        [
+          31.30579699460000,
+          -13.45553853620000
+        ],
+        [
+          31.30579699460000,
+          5.38585186000000
+        ],
+        [
+          12.20662880000000,
+          5.38585186000000
+        ],
+        [
+          12.20662880000000,
+          -13.45553853620000
+        ]
+      ]
+    ]
+  },
+  "properties": {
+    "title": "Settlement lightscores for COD, 2020",
+    "description": "Settlement lightscores in 2020 for Democratic Republic of the Congo",
+    "datetime": null,
+    "start_datetime": "2020-01-01T00:00:00.000Z",
+    "end_datetime": "2020-12-31T23:59:59.999Z"
+  },
+  "collection": "COD-COD-set_lightscore-collection",
+  "links": [
+    {
+      "rel": "collection",
+      "href": "./collection.json",
+      "type": "application/json",
+      "title": "COD-COD set_lightscore Collection"
+    },
+    {
+      "rel": "root",
+      "href": "././././catalog.json",
+      "type": "application/json",
+      "title": "HREA Catalog"
+    },
+    {
+      "rel": "parent",
+      "href": "./collection.json",
+      "type": "application/json",
+      "title": "COD-COD set_lightscore Collection"
+    }
+  ],
+  "assets": {
+    "set_lightscore": {
+      "href": "https://globalnightlight.s3.amazonaws.com/HREAv1.1_COGs/COD/COD/set_lightscore/COD_set_lightscore_2020.tif",
+      "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+      "title": "Settlement lightscores for COD, 2020",
+      "roles": [
+        "data"
+      ]
+    }
+  }
+}

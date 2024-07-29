@@ -1,0 +1,709 @@
+{
+  "id": "hrea-catalog",
+  "type": "Catalog",
+  "title": "HREA Catalog",
+  "stac_version": "1.0.0",
+  "description": "Catalog of High Resolution Electricity Access data for unelectrified countries, 2013—2020",
+  "links": [
+    {
+      "rel": "root",
+      "href": "./catalog.json",
+      "type": "application/json"
+    },
+    {
+      "rel": "child",
+      "href": "./AFG/catalog.json",
+      "type": "application/json",
+      "title": "AFG Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./AGO/catalog.json",
+      "type": "application/json",
+      "title": "AGO Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./BDI/catalog.json",
+      "type": "application/json",
+      "title": "BDI Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./BEN/catalog.json",
+      "type": "application/json",
+      "title": "BEN Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./BFA/catalog.json",
+      "type": "application/json",
+      "title": "BFA Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./BGD/catalog.json",
+      "type": "application/json",
+      "title": "BGD Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./BLZ/catalog.json",
+      "type": "application/json",
+      "title": "BLZ Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./BOL/catalog.json",
+      "type": "application/json",
+      "title": "BOL Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./BRA/catalog.json",
+      "type": "application/json",
+      "title": "BRA Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./BTN/catalog.json",
+      "type": "application/json",
+      "title": "BTN Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./BWA/catalog.json",
+      "type": "application/json",
+      "title": "BWA Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./CAF/catalog.json",
+      "type": "application/json",
+      "title": "CAF Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./CIV/catalog.json",
+      "type": "application/json",
+      "title": "CIV Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./CMR/catalog.json",
+      "type": "application/json",
+      "title": "CMR Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./COD/catalog.json",
+      "type": "application/json",
+      "title": "COD Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./COG/catalog.json",
+      "type": "application/json",
+      "title": "COG Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./COL/catalog.json",
+      "type": "application/json",
+      "title": "COL Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./COM/catalog.json",
+      "type": "application/json",
+      "title": "COM Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./CPV/catalog.json",
+      "type": "application/json",
+      "title": "CPV Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./CRI/catalog.json",
+      "type": "application/json",
+      "title": "CRI Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./CUB/catalog.json",
+      "type": "application/json",
+      "title": "CUB Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./DJI/catalog.json",
+      "type": "application/json",
+      "title": "DJI Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./DMA/catalog.json",
+      "type": "application/json",
+      "title": "DMA Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./DOM/catalog.json",
+      "type": "application/json",
+      "title": "DOM Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./DZA/catalog.json",
+      "type": "application/json",
+      "title": "DZA Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./ECU/catalog.json",
+      "type": "application/json",
+      "title": "ECU Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./EGY/catalog.json",
+      "type": "application/json",
+      "title": "EGY Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./ERI/catalog.json",
+      "type": "application/json",
+      "title": "ERI Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./ETH/catalog.json",
+      "type": "application/json",
+      "title": "ETH Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./FJI/catalog.json",
+      "type": "application/json",
+      "title": "FJI Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./FSM/catalog.json",
+      "type": "application/json",
+      "title": "FSM Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./GAB/catalog.json",
+      "type": "application/json",
+      "title": "GAB Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./GHA/catalog.json",
+      "type": "application/json",
+      "title": "GHA Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./GIN/catalog.json",
+      "type": "application/json",
+      "title": "GIN Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./GMB/catalog.json",
+      "type": "application/json",
+      "title": "GMB Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./GNB/catalog.json",
+      "type": "application/json",
+      "title": "GNB Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./GNQ/catalog.json",
+      "type": "application/json",
+      "title": "GNQ Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./GRD/catalog.json",
+      "type": "application/json",
+      "title": "GRD Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./GTM/catalog.json",
+      "type": "application/json",
+      "title": "GTM Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./GUY/catalog.json",
+      "type": "application/json",
+      "title": "GUY Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./HND/catalog.json",
+      "type": "application/json",
+      "title": "HND Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./HTI/catalog.json",
+      "type": "application/json",
+      "title": "HTI Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./IDN/catalog.json",
+      "type": "application/json",
+      "title": "IDN Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./IND/catalog.json",
+      "type": "application/json",
+      "title": "IND Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./IRQ/catalog.json",
+      "type": "application/json",
+      "title": "IRQ Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./JAM/catalog.json",
+      "type": "application/json",
+      "title": "JAM Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./JOR/catalog.json",
+      "type": "application/json",
+      "title": "JOR Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./KEN/catalog.json",
+      "type": "application/json",
+      "title": "KEN Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./KGZ/catalog.json",
+      "type": "application/json",
+      "title": "KGZ Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./KHM/catalog.json",
+      "type": "application/json",
+      "title": "KHM Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./KIR/catalog.json",
+      "type": "application/json",
+      "title": "KIR Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./LAO/catalog.json",
+      "type": "application/json",
+      "title": "LAO Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./LBN/catalog.json",
+      "type": "application/json",
+      "title": "LBN Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./LBR/catalog.json",
+      "type": "application/json",
+      "title": "LBR Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./LBY/catalog.json",
+      "type": "application/json",
+      "title": "LBY Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./LCA/catalog.json",
+      "type": "application/json",
+      "title": "LCA Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./LKA/catalog.json",
+      "type": "application/json",
+      "title": "LKA Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./LSO/catalog.json",
+      "type": "application/json",
+      "title": "LSO Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./MAR/catalog.json",
+      "type": "application/json",
+      "title": "MAR Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./MDG/catalog.json",
+      "type": "application/json",
+      "title": "MDG Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./MEX/catalog.json",
+      "type": "application/json",
+      "title": "MEX Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./MHL/catalog.json",
+      "type": "application/json",
+      "title": "MHL Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./MLI/catalog.json",
+      "type": "application/json",
+      "title": "MLI Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./MMR/catalog.json",
+      "type": "application/json",
+      "title": "MMR Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./MNG/catalog.json",
+      "type": "application/json",
+      "title": "MNG Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./MOZ/catalog.json",
+      "type": "application/json",
+      "title": "MOZ Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./MRT/catalog.json",
+      "type": "application/json",
+      "title": "MRT Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./MUS/catalog.json",
+      "type": "application/json",
+      "title": "MUS Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./MWI/catalog.json",
+      "type": "application/json",
+      "title": "MWI Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./MYS/catalog.json",
+      "type": "application/json",
+      "title": "MYS Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./NAM/catalog.json",
+      "type": "application/json",
+      "title": "NAM Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./NER/catalog.json",
+      "type": "application/json",
+      "title": "NER Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./NGA/catalog.json",
+      "type": "application/json",
+      "title": "NGA Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./NIC/catalog.json",
+      "type": "application/json",
+      "title": "NIC Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./NPL/catalog.json",
+      "type": "application/json",
+      "title": "NPL Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./NRU/catalog.json",
+      "type": "application/json",
+      "title": "NRU Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./PAK/catalog.json",
+      "type": "application/json",
+      "title": "PAK Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./PAN/catalog.json",
+      "type": "application/json",
+      "title": "PAN Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./PER/catalog.json",
+      "type": "application/json",
+      "title": "PER Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./PHL/catalog.json",
+      "type": "application/json",
+      "title": "PHL Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./PLW/catalog.json",
+      "type": "application/json",
+      "title": "PLW Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./PNG/catalog.json",
+      "type": "application/json",
+      "title": "PNG Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./PRK/catalog.json",
+      "type": "application/json",
+      "title": "PRK Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./PRY/catalog.json",
+      "type": "application/json",
+      "title": "PRY Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./PSE/catalog.json",
+      "type": "application/json",
+      "title": "PSE Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./RWA/catalog.json",
+      "type": "application/json",
+      "title": "RWA Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./SDN/catalog.json",
+      "type": "application/json",
+      "title": "SDN Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./SEN/catalog.json",
+      "type": "application/json",
+      "title": "SEN Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./SLB/catalog.json",
+      "type": "application/json",
+      "title": "SLB Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./SLE/catalog.json",
+      "type": "application/json",
+      "title": "SLE Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./SLV/catalog.json",
+      "type": "application/json",
+      "title": "SLV Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./SOM/catalog.json",
+      "type": "application/json",
+      "title": "SOM Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./SSD/catalog.json",
+      "type": "application/json",
+      "title": "SSD Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./STP/catalog.json",
+      "type": "application/json",
+      "title": "STP Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./SUR/catalog.json",
+      "type": "application/json",
+      "title": "SUR Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./SWZ/catalog.json",
+      "type": "application/json",
+      "title": "SWZ Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./SYR/catalog.json",
+      "type": "application/json",
+      "title": "SYR Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./TCD/catalog.json",
+      "type": "application/json",
+      "title": "TCD Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./TGO/catalog.json",
+      "type": "application/json",
+      "title": "TGO Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./THA/catalog.json",
+      "type": "application/json",
+      "title": "THA Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./TJK/catalog.json",
+      "type": "application/json",
+      "title": "TJK Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./TLS/catalog.json",
+      "type": "application/json",
+      "title": "TLS Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./TUN/catalog.json",
+      "type": "application/json",
+      "title": "TUN Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./TUV/catalog.json",
+      "type": "application/json",
+      "title": "TUV Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./TZA/catalog.json",
+      "type": "application/json",
+      "title": "TZA Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./UGA/catalog.json",
+      "type": "application/json",
+      "title": "UGA Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./URY/catalog.json",
+      "type": "application/json",
+      "title": "URY Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./VCT/catalog.json",
+      "type": "application/json",
+      "title": "VCT Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./VNM/catalog.json",
+      "type": "application/json",
+      "title": "VNM Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./VUT/catalog.json",
+      "type": "application/json",
+      "title": "VUT Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./WSM/catalog.json",
+      "type": "application/json",
+      "title": "WSM Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./YEM/catalog.json",
+      "type": "application/json",
+      "title": "YEM Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./ZAF/catalog.json",
+      "type": "application/json",
+      "title": "ZAF Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./ZMB/catalog.json",
+      "type": "application/json",
+      "title": "ZMB Catalog"
+    },
+    {
+      "rel": "child",
+      "href": "./ZWE/catalog.json",
+      "type": "application/json",
+      "title": "ZWE Catalog"
+    },
+    {
+      "rel": "self",
+      "href": "https://globalnightlight.s3.amazonaws.com/HREAv1.1_COGs/catalog.json",
+      "type": "application/json"
+    }
+  ]
+}

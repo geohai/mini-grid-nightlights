@@ -1,0 +1,77 @@
+{
+  "stac_version": "1.0.0",
+  "stac_extensions": [],
+  "type": "Feature",
+  "id": "ZMB_set_lightscore_2020",
+  "bbox": [
+    22.00013888900000,
+    -18.07152777800000,
+    33.67930564900000,
+    -8.25319436600000
+  ],
+  "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+      [
+        [
+          22.00013888900000,
+          -18.07152777800000
+        ],
+        [
+          33.67930564900000,
+          -18.07152777800000
+        ],
+        [
+          33.67930564900000,
+          -8.25319436600000
+        ],
+        [
+          22.00013888900000,
+          -8.25319436600000
+        ],
+        [
+          22.00013888900000,
+          -18.07152777800000
+        ]
+      ]
+    ]
+  },
+  "properties": {
+    "title": "Settlement lightscores for ZMB, 2020",
+    "description": "Settlement lightscores in 2020 for Zambia",
+    "datetime": null,
+    "start_datetime": "2020-01-01T00:00:00.000Z",
+    "end_datetime": "2020-12-31T23:59:59.999Z"
+  },
+  "collection": "ZMB-ZMB-set_lightscore-collection",
+  "links": [
+    {
+      "rel": "collection",
+      "href": "./collection.json",
+      "type": "application/json",
+      "title": "ZMB-ZMB set_lightscore Collection"
+    },
+    {
+      "rel": "root",
+      "href": "././././catalog.json",
+      "type": "application/json",
+      "title": "HREA Catalog"
+    },
+    {
+      "rel": "parent",
+      "href": "./collection.json",
+      "type": "application/json",
+      "title": "ZMB-ZMB set_lightscore Collection"
+    }
+  ],
+  "assets": {
+    "set_lightscore": {
+      "href": "https://globalnightlight.s3.amazonaws.com/HREAv1.1_COGs/ZMB/ZMB/set_lightscore/ZMB_set_lightscore_2020.tif",
+      "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+      "title": "Settlement lightscores for ZMB, 2020",
+      "roles": [
+        "data"
+      ]
+    }
+  }
+}

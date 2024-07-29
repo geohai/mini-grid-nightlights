@@ -436,11 +436,28 @@ process_minigrid_site <- function(mg_feature) {
 # This can be done using something like `lapply(1:nrow(mgs), function(i) mgs[i,])`
 results <- lapply(mgs_list, process_minigrid_site)
 
+
+# put the distance and prob_elec_access columns from the results into their own data frame as pairs
+results_by_building <- lapply(results, function(x) (
+  data.frame(
+    distance = x$distance, 
+    prob_elec_access = x$prob_elec_access
+  )
+))
+# put each pair into its own row of a data frame
+results_by_building <- do.call(rbind, results_by_building)
+# export 
+saveRDS(results_by_building, "data/oemap/results_by_building_rnd2.rds")
+
 # convert results to a data frame
-results <- do.call(rbind, results)
+results.df <- do.call(rbind, results)
+# export the results as RDS
+saveRDS(results, "data/oemap/results_rnd2.rds")
+# read in the results
+results.df <- readRDS("data/oemap/results_rnd2.rds")
 
 # add results to mgs
-mgs <- cbind(mgs, results)
+mgs <- cbind(mgs, results.df)
 
 # convert mean, count, and sd to numeric from list columns
 mgs$mean <- as.numeric(mgs$mean)
@@ -448,7 +465,9 @@ mgs$count <- as.numeric(mgs$count)
 mgs$sd <- as.numeric(mgs$sd)
 
 glimpse(mgs)
+
 # save mgs
+mgs <- mgs %>% select(-distance, -prob_elec_access)
 st_write(mgs, "data/oemap/mgs_28_buffer_results.geojson")
 ```
 

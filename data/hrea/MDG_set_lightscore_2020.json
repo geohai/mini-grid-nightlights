@@ -1,0 +1,77 @@
+{
+  "stac_version": "1.0.0",
+  "stac_extensions": [],
+  "type": "Feature",
+  "id": "MDG_set_lightscore_2020",
+  "bbox": [
+    42.89574141700000,
+    -25.60601154800001,
+    50.75990814700000,
+    -11.95073366100000
+  ],
+  "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+      [
+        [
+          42.89574141700000,
+          -25.60601154800001
+        ],
+        [
+          50.75990814700000,
+          -25.60601154800001
+        ],
+        [
+          50.75990814700000,
+          -11.95073366100000
+        ],
+        [
+          42.89574141700000,
+          -11.95073366100000
+        ],
+        [
+          42.89574141700000,
+          -25.60601154800001
+        ]
+      ]
+    ]
+  },
+  "properties": {
+    "title": "Settlement lightscores for MDG, 2020",
+    "description": "Settlement lightscores in 2020 for Madagascar",
+    "datetime": null,
+    "start_datetime": "2020-01-01T00:00:00.000Z",
+    "end_datetime": "2020-12-31T23:59:59.999Z"
+  },
+  "collection": "MDG-MDG-set_lightscore-collection",
+  "links": [
+    {
+      "rel": "collection",
+      "href": "./collection.json",
+      "type": "application/json",
+      "title": "MDG-MDG set_lightscore Collection"
+    },
+    {
+      "rel": "root",
+      "href": "././././catalog.json",
+      "type": "application/json",
+      "title": "HREA Catalog"
+    },
+    {
+      "rel": "parent",
+      "href": "./collection.json",
+      "type": "application/json",
+      "title": "MDG-MDG set_lightscore Collection"
+    }
+  ],
+  "assets": {
+    "set_lightscore": {
+      "href": "https://globalnightlight.s3.amazonaws.com/HREAv1.1_COGs/MDG/MDG/set_lightscore/MDG_set_lightscore_2020.tif",
+      "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+      "title": "Settlement lightscores for MDG, 2020",
+      "roles": [
+        "data"
+      ]
+    }
+  }
+}

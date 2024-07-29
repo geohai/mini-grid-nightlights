@@ -1,0 +1,77 @@
+{
+  "stac_version": "1.0.0",
+  "stac_extensions": [],
+  "type": "Feature",
+  "id": "KEN_set_lightscore_2020",
+  "bbox": [
+    33.91278250200000,
+    -4.91769912200000,
+    41.88667145500000,
+    4.92174540100000
+  ],
+  "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+      [
+        [
+          33.91278250200000,
+          -4.91769912200000
+        ],
+        [
+          41.88667145500000,
+          -4.91769912200000
+        ],
+        [
+          41.88667145500000,
+          4.92174540100000
+        ],
+        [
+          33.91278250200000,
+          4.92174540100000
+        ],
+        [
+          33.91278250200000,
+          -4.91769912200000
+        ]
+      ]
+    ]
+  },
+  "properties": {
+    "title": "Settlement lightscores for KEN, 2020",
+    "description": "Settlement lightscores in 2020 for Kenya",
+    "datetime": null,
+    "start_datetime": "2020-01-01T00:00:00.000Z",
+    "end_datetime": "2020-12-31T23:59:59.999Z"
+  },
+  "collection": "KEN-KEN-set_lightscore-collection",
+  "links": [
+    {
+      "rel": "collection",
+      "href": "./collection.json",
+      "type": "application/json",
+      "title": "KEN-KEN set_lightscore Collection"
+    },
+    {
+      "rel": "root",
+      "href": "././././catalog.json",
+      "type": "application/json",
+      "title": "HREA Catalog"
+    },
+    {
+      "rel": "parent",
+      "href": "./collection.json",
+      "type": "application/json",
+      "title": "KEN-KEN set_lightscore Collection"
+    }
+  ],
+  "assets": {
+    "set_lightscore": {
+      "href": "https://globalnightlight.s3.amazonaws.com/HREAv1.1_COGs/KEN/KEN/set_lightscore/KEN_set_lightscore_2020.tif",
+      "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+      "title": "Settlement lightscores for KEN, 2020",
+      "roles": [
+        "data"
+      ]
+    }
+  }
+}

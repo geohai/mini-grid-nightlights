@@ -1,0 +1,77 @@
+{
+  "stac_version": "1.0.0",
+  "stac_extensions": [],
+  "type": "Feature",
+  "id": "MRT_set_lightscore_2020",
+  "bbox": [
+    -17.06347222200000,
+    14.71652777800000,
+    -4.85930545800000,
+    27.22430565600000
+  ],
+  "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+      [
+        [
+          -17.06347222200000,
+          14.71652777800000
+        ],
+        [
+          -4.85930545800000,
+          14.71652777800000
+        ],
+        [
+          -4.85930545800000,
+          27.22430565600000
+        ],
+        [
+          -17.06347222200000,
+          27.22430565600000
+        ],
+        [
+          -17.06347222200000,
+          14.71652777800000
+        ]
+      ]
+    ]
+  },
+  "properties": {
+    "title": "Settlement lightscores for MRT, 2020",
+    "description": "Settlement lightscores in 2020 for Mauritania",
+    "datetime": null,
+    "start_datetime": "2020-01-01T00:00:00.000Z",
+    "end_datetime": "2020-12-31T23:59:59.999Z"
+  },
+  "collection": "MRT-MRT-set_lightscore-collection",
+  "links": [
+    {
+      "rel": "collection",
+      "href": "./collection.json",
+      "type": "application/json",
+      "title": "MRT-MRT set_lightscore Collection"
+    },
+    {
+      "rel": "root",
+      "href": "././././catalog.json",
+      "type": "application/json",
+      "title": "HREA Catalog"
+    },
+    {
+      "rel": "parent",
+      "href": "./collection.json",
+      "type": "application/json",
+      "title": "MRT-MRT set_lightscore Collection"
+    }
+  ],
+  "assets": {
+    "set_lightscore": {
+      "href": "https://globalnightlight.s3.amazonaws.com/HREAv1.1_COGs/MRT/MRT/set_lightscore/MRT_set_lightscore_2020.tif",
+      "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+      "title": "Settlement lightscores for MRT, 2020",
+      "roles": [
+        "data"
+      ]
+    }
+  }
+}

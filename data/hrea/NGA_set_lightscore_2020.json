@@ -1,0 +1,77 @@
+{
+  "stac_version": "1.0.0",
+  "stac_extensions": [],
+  "type": "Feature",
+  "id": "NGA_set_lightscore_2020",
+  "bbox": [
+    2.11965750100000,
+    4.22797973300000,
+    14.67993537900000,
+    13.88881314400000
+  ],
+  "geometry": {
+    "type": "Polygon",
+    "coordinates": [
+      [
+        [
+          2.11965750100000,
+          4.22797973300000
+        ],
+        [
+          14.67993537900000,
+          4.22797973300000
+        ],
+        [
+          14.67993537900000,
+          13.88881314400000
+        ],
+        [
+          2.11965750100000,
+          13.88881314400000
+        ],
+        [
+          2.11965750100000,
+          4.22797973300000
+        ]
+      ]
+    ]
+  },
+  "properties": {
+    "title": "Settlement lightscores for NGA, 2020",
+    "description": "Settlement lightscores in 2020 for Nigeria",
+    "datetime": null,
+    "start_datetime": "2020-01-01T00:00:00.000Z",
+    "end_datetime": "2020-12-31T23:59:59.999Z"
+  },
+  "collection": "NGA-NGA-set_lightscore-collection",
+  "links": [
+    {
+      "rel": "collection",
+      "href": "./collection.json",
+      "type": "application/json",
+      "title": "NGA-NGA set_lightscore Collection"
+    },
+    {
+      "rel": "root",
+      "href": "././././catalog.json",
+      "type": "application/json",
+      "title": "HREA Catalog"
+    },
+    {
+      "rel": "parent",
+      "href": "./collection.json",
+      "type": "application/json",
+      "title": "NGA-NGA set_lightscore Collection"
+    }
+  ],
+  "assets": {
+    "set_lightscore": {
+      "href": "https://globalnightlight.s3.amazonaws.com/HREAv1.1_COGs/NGA/NGA/set_lightscore/NGA_set_lightscore_2020.tif",
+      "type": "image/tiff; application=geotiff; profile=cloud-optimized",
+      "title": "Settlement lightscores for NGA, 2020",
+      "roles": [
+        "data"
+      ]
+    }
+  }
+}
