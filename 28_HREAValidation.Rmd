@@ -389,4 +389,18 @@ n_unelectrified_per_mean_lightscore <- mgs_results_df %>%
     filter(lightscore_mean_1000 < 0.5) %>%
     nrow()
 
+n_unelectrified_per_max_lightscore <- mgs_results_df %>%
+    filter(lightscore_max_1000 < 0.5) %>%
+    nrow()
+
+n_minigrids <- nrow(mgs_results_df)
+
+percent_unelectrified_per_mean_lightscore <- n_unelectrified_per_mean_lightscore / n_minigrids * 100
+percent_unelectrified_per_max_lightscore <- n_unelectrified_per_max_lightscore / n_minigrids * 100
+
+# print the results
+print(paste0("Number of Mini-Grids with Lightscore < 0.5 (Mean): ", n_unelectrified_per_mean_lightscore))
+print(paste0("Number of Mini-Grids with Lightscore < 0.5 (Max): ", n_unelectrified_per_max_lightscore))
+print(paste0("Percent of Mini-Grids with Lightscore < 0.5 (Mean): ", percent_unelectrified_per_mean_lightscore))
+print(paste0("Percent of Mini-Grids with Lightscore < 0.5 (Max): ", percent_unelectrified_per_max_lightscore))
 ```
