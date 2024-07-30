@@ -383,4 +383,10 @@ ggplot(mgs_results_df) +
   geom_vline(xintercept = 0.5, linetype = "dashed", color = "red") +
   # add legend
   scale_fill_manual(values = c("darkgreen", "darkblue"), labels = c("Mean 1000m", "Max 1000m"))
+
+# Calculate the number of mini-grids with a lightscore < 0.5
+n_unelectrified_per_mean_lightscore <- mgs_results_df %>%
+    filter(lightscore_mean_1000 < 0.5) %>%
+    nrow()
+
 ```
