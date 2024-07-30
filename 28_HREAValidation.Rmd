@@ -313,9 +313,9 @@ done
 ```{r}
 countries_w_codes <- read.csv("data/hrea/countries.csv")
 mgs_pre_2020 <- vect("data/mgs/mgs_operational_pre_2020.geojson")
+mgs_pre_2020
 
-# lightscore <- rast("data/hrea/SLE_set_lightscore_2020.tif")
-
+mgs_results <- list()
 # loop over country codes, read in files
 for (country_iso3 in countries_w_codes$ISO3166.1.Alpha.3) {
     # read in the lightscore data as a geotiff
@@ -333,20 +333,54 @@ for (country_iso3 in countries_w_codes$ISO3166.1.Alpha.3) {
     print(paste0("Number of mini-Grids in this country: ", nrow(mgs_country)))
 
     # buffer the mini-grids
+    mgs_country_buff <- buffer(mgs_country, 1000)
     # extract the values (max and mean)
+    result_mean <- terra::extract(ls, mgs_country_buff, fun = mean, na.rm = TRUE)
+    result_max <- terra::extract(ls, mgs_country_buff, fun = max, na.rm = TRUE)
     # join to the mini-grids
-    # export to a result var
-    # plot
+    mgs_country$lightscore_mean_1000 <- result_mean$layer
+    mgs_country$lightscore_max_1000 <- result_max$layer
+    # convert mgs_country SpatVector to a data frame
+    # print(paste0("Converting to data frame..."))
+    mgs_country_df <- as.data.frame(mgs_country)
+    # print(paste0("Merging into resutls..."))
+    mgs_results[[country_iso3]] <- mgs_country_df
 }
+mgs_results
+# combine results into a single df
+mgs_results_df <- do.call(rbind, mgs_results)
+mgs_results_df$date_commissioned <- as.POSIXct(as.numeric(mgs_results_df$date_commissioned), origin="1970-01-01", tz="UTC")
 
+# remove mini-grids that have invalid lightscore values
+# starts with 473 mini-grids
+mgs_results_df <- mgs_results_df[!is.na(mgs_results_df$lightscore_mean_1000), ]
+mgs_results_df <- mgs_results_df[!is.na(mgs_results_df$lightscore_max_1000), ]
+# 435 mini-grids
 
-lightscore
+# export
+write.csv(mgs_results_df, "data/hrea/mgs_results.csv", row.names = FALSE)
 ```
 
-## To Do
-- Loop over all the countries
-- Read in the lightscore data
-- Buffer the mini-grids
-- Find the mean and max lightscores in a 1km buffer
-- Join the lightscores to the mini-grids
-- Plot them
+## Visualize the Resutls
+```{r}
+# read in the results
+mgs_results_df <- read.csv("data/hrea/mgs_results.csv")
+mgs_results_df$date_commissioned <- as.Date(mgs_results_df$date_commissioned)
+
+# create a density plot of the lightscore
+ggplot(mgs_results_df) +
+  geom_histogram(aes(lightscore_mean_1000), binwidth = 0.1, fill = "darkgreen", col = "darkgreen", alpha = 0.5) +
+  geom_histogram(aes(lightscore_max_1000), binwidth = 0.1, fill = "darkblue", col = "darkblue", alpha = 0.5) +
+  theme_bw() +
+  labs(
+    title = "Histogram of Lightscore for 400+ Mini-Grids in SSA",
+    x = "% Likelihood of Electrification ('Lightscore')",
+    y = "Count"
+  ) +
+  # y ticks every 1, x tickets every 0.1
+  scale_y_continuous(breaks = seq(0, 7, 1)) +
+  scale_x_continuous(breaks = seq(0, 1, 0.1)) +
+  geom_vline(xintercept = 0.5, linetype = "dashed", color = "red") +
+  # add legend
+  scale_fill_manual(values = c("darkgreen", "darkblue"), labels = c("Mean 1000m", "Max 1000m"))
+```
