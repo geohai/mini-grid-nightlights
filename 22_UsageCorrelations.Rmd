@@ -249,7 +249,7 @@ use_plot_pres <- night_use %>%
   geom_smooth(method = "lm", col = "darkgreen") +
   scale_x_log10() +
   scale_y_log10() +
-  labs(title = "Nighttime Brightness 24-Month SMA vs. Total Consumption",
+  labs(title = "Nighttime Brightness 2yr SMA vs. Total Consumption",
        x = "Nighttime Brightness (nW/cm^2/sr)",
        y = "Total Consumption (kWh)") +
    theme_bw() +
@@ -268,7 +268,7 @@ use_plot <- night_use %>%
   geom_smooth(method = "lm", col = "darkgreen") +
   scale_x_log10() +
   scale_y_log10() +
-  labs(title = "Nighttime Brightness 24-Month SMA vs. Total Consumption",
+  labs(title = "Nighttime Brightness 2yr SMA vs. Consumption",
        x = "Nighttime Brightness (nW/cm^2/sr)",
        y = "Total Consumption (kWh)") +
    theme_bw() +
@@ -285,7 +285,7 @@ acpu_plot <- night_use %>%
   geom_smooth(method = "lm", col = "darkgreen") +
   scale_x_log10() +
   scale_y_log10() +
-  labs(title = "Nighttime Brightness 24-Month SMA vs. ACPU",
+  labs(title = "Nighttime Brightness 2yr SMA vs. ACPU",
        x = "Nighttime Brightness (nW/cm^2/sr)",
        y = "Average Consumption Per User (ACPU) (kWh)") +
    theme_bw() +
@@ -302,7 +302,7 @@ rev_plot <- night_use %>%
   geom_smooth(method = "lm", col = "darkgreen") +
   scale_x_log10() +
   scale_y_log10() +
-  labs(title = "Nighttime Brightness 24-Month SMA vs. Total Revenue",
+  labs(title = "Nighttime Brightness 2yr SMA vs. Total Revenue",
        x = "Nighttime Brightness (nW/cm^2/sr)",
        y = "Total Revenue (USD)") +
    theme_bw() +
@@ -318,7 +318,7 @@ cust_plot <- night_use %>%
   geom_smooth(method = "lm", col = "darkgreen") +
   scale_x_log10() +
   scale_y_log10() +
-  labs(title = "Nighttime Brightness 24-Month SMA vs. # of Customers",
+  labs(title = "Nighttime Brightness 2yr SMA vs. # of Customers",
        x = "Nighttime Brightness (nW/cm^2/sr)",
        y = "Number of Customers in Grid (count)") +
    theme_bw() +
