@@ -82,11 +82,10 @@ SLE_set_lightscore_2020.tif
 collection.json
 
 ```{bash}
-# download the lightscore data for 2020
-country_iso3=SLE
+country_iso3=ZWE
 year=2020
-aws s3 cp s3://globalnightlight/HREAv1.1_COGs/${country_iso3}/${country_iso3}/set_lightscore/${country_iso3}_set_lightscore_${year}.tif data/hrea/
-aws s3 cp s3://globalnightlight/HREAv1.1_COGs/${country_iso3}/${country_iso3}/set_lightscore/${country_iso3}_set_lightscore_${year}.json data/hrea/
+aws s3 cp s3://globalnightlight/HREAv1.1_COGs/${country_iso3}/${country_iso3}/set_lightscore/${country_iso3}_set_lightscore_${year}.tif data/hrea/ --no-sign-request
+aws s3 cp s3://globalnightlight/HREAv1.1_COGs/${country_iso3}/${country_iso3}/set_lightscore/${country_iso3}_set_lightscore_${year}.json data/hrea/ --no-sign-request
 ```
 
 ## Read in the Lightscore Data
@@ -126,8 +125,7 @@ mgs_sl <- mgs_sl[mgs_sl$date_commissioned <= "2019-12-31", ]
 mgs_sl
 # 18 mini-grids
 
-# create a 300m buffer around the mini-grid points
-mgs_sl_buff <- buffer(mgs_sl, 300)
+# create a 1000m buffer around the mini-grid points
 mgs_sl_buff_1000 <- buffer(mgs_sl, 1000)
 
 # sample the lightscore at the mini-grid locations
@@ -158,17 +156,18 @@ ggplot(as.data.frame(mgs_sl)) +
   scale_x_continuous(breaks = seq(0, 1, 0.1)) +
   geom_vline(xintercept = 0.5, linetype = "dashed", color = "red") +
   # add legend 
-#   scale_fill_manual(values = c("darkgreen", "darkblue"), labels = c("Mean 1000m", "Max 1000m"))
+    scale_fill_manual(values = c("darkgreen", "darkblue"), labels = c("Mean 1000m", "Max 1000m"))
+
 ```
 
 ## Zoom into a Single Mini-Grid
 Number 16 and 5 have mean scores > 0.5
 Number 12, 11, and 3 have low maxes < 0.1
 ```{r}
-high <- mgs_sl_buff[16,]
+high <- mgs_sl_buff_1000[16,]
 high$site_name # "Sahn"
 
-# buffer high by another 500 meters
+# buffer high by another 200 meters
 high_buff <- buffer(high, 2000)
 # clip lightscore to the extent of the high mini-grid
 lightscore_high <- crop(lightscore, high_buff)
@@ -194,15 +193,15 @@ sat_map_high <- ggmap::get_googlemap(
     scale = 2,
     size = c(640, 640)
 )
-sat_rast_low <- rast(sat_map_low)
-plot(sat_rast_low)
+sat_rast_high <- rast(sat_map_high)
+plot(sat_rast_high)
 plot(lightscore_high, col = hcl.colors(100), add = TRUE, alpha = 0.5)
 plot(high, add = TRUE, col = "darkgreen", alpha = 0.0)
 ```
 
 ## Check Out a Low Probability Mini-Grid
 ```{r}
-low <- mgs_sl_buff[12,]
+low <- mgs_sl_buff_1000[12,]
 low$site_name # "Kaordu"
 
 low_buff <- buffer(low, 2000)
@@ -297,15 +296,11 @@ write.csv(countries_w_codes, "data/hrea/countries.csv", row.names = FALSE)
 ## Download the Lightscore Data for All Countries with Mini-Grids
 ```{bash}
 year=2020
-
-# Extract ISO3 codes from the CSV file, removing quotes
-country_iso3s=$(tail -n +2 data/hrea/countries.csv | cut -d "," -f 2 | tr -d '"')
-
-for country_iso3 in $country_iso3s
+tail -n +2 data/hrea/countries.csv | cut -d "," -f 2 | tr -d '"' | while read country_iso3
 do
-    # Use the extracted ISO3 codes to construct the S3 paths
-    aws s3 cp s3://globalnightlight/HREAv1.1_COGs/${country_iso3}/${country_iso3}/set_lightscore/${country_iso3}_set_lightscore_${year}.tif data/hrea/
-    aws s3 cp s3://globalnightlight/HREAv1.1_COGs/${country_iso3}/${country_iso3}/set_lightscore/${country_iso3}_set_lightscore_${year}.json data/hrea/
+    echo "Downloading lightscore data for country: $country_iso3 in year $year"
+    aws s3 cp s3://globalnightlight/HREAv1.1_COGs/${country_iso3}/${country_iso3}/set_lightscore/${country_iso3}_set_lightscore_${year}.tif data/hrea/ --no-sign-request
+    aws s3 cp s3://globalnightlight/HREAv1.1_COGs/${country_iso3}/${country_iso3}/set_lightscore/${country_iso3}_set_lightscore_${year}.json data/hrea/ --no-sign-request
 done
 ```
 
@@ -403,4 +398,36 @@ print(paste0("Number of Mini-Grids with Lightscore < 0.5 (Mean): ", n_unelectrif
 print(paste0("Number of Mini-Grids with Lightscore < 0.5 (Max): ", n_unelectrified_per_max_lightscore))
 print(paste0("Percent of Mini-Grids with Lightscore < 0.5 (Mean): ", percent_unelectrified_per_mean_lightscore))
 print(paste0("Percent of Mini-Grids with Lightscore < 0.5 (Max): ", percent_unelectrified_per_max_lightscore))
+```
+
+## Create Summary Table of Results by Country
+```{r}
+# create a summary table of the results by country
+mgs_results_summary <- mgs_results_df %>%
+    group_by(country) %>%
+    summarise(
+        n_mini_grids = n(),
+        n_electrified_mean = sum(lightscore_mean_1000 >= 0.5),
+        n_electrified_max = sum(lightscore_max_1000 >= 0.5),
+        percent_electrified_mean = n_electrified_mean / n_mini_grids * 100,
+        percent_electrified_max = n_electrified_max / n_mini_grids * 100
+    )
+# export the summary table
+write.csv(mgs_results_summary, "data/hrea/mgs_results_summary.csv", row.names = FALSE)
+
+# print the overall summary not by country
+mgs_results_summary_overall <- mgs_results_summary %>%
+    summarise(
+        n_mini_grids = sum(n_mini_grids),
+        n_electrified_mean = sum(n_electrified_mean),
+        n_electrified_max = sum(n_electrified_max),
+        percent_electrified_mean = n_electrified_mean / n_mini_grids * 100,
+        percent_electrified_max = n_electrified_max / n_mini_grids * 100
+    )
+print(mgs_results_summary_overall)
+# export the overall summary
+write.csv(mgs_results_summary_overall, "data/hrea/mgs_results_summary_overall.csv", row.names = FALSE)
+
+
+
 ```
