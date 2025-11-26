@@ -3,8 +3,6 @@
 Code for **“A Light in the Dark: Detectability of Mini-Grid Electrification with Remote Sensing in Sub-Saharan Africa.”**  
 This repository contains the Python and R code used to extract geospatial time series, run staggered Difference-in-Differences (DiD) analyses, and generate figures for the paper and supplementary material.
 
----
-
 ## Repository Structure (in numerical order)
 
 ### Python / Jupyter Notebooks
@@ -38,7 +36,6 @@ This repository contains the Python and R code used to extract geospatial time s
 - **27_ParallelTrendsTesting.Rmd** – Parallel trends assumption tests.  
 - **28_HREAValidation.Rmd** – Validation using external energy access products.
 
----
 
 ## Getting Started
 
@@ -65,7 +62,6 @@ Install required R packages (see headers of each `.Rmd`):
 install.packages(c("tidyverse", "sf", "did", "ggplot2", "rmarkdown"))
 ```
 
----
 
 ## Configuration
 
@@ -78,30 +74,9 @@ cp .env.example .env
 
 Add your local paths and any credentials required for data access.
 
----
 
 ## Data Availability
 
 * **Public datasets** (VIIRS, population grids, CLUB-ER) can be downloaded via the provided notebooks.
 * **Operational mini-grid data** (PowerGen, CBIL) **cannot** be redistributed due to confidentiality.
 * Scripts are provided so that users with legitimate access can reproduce the analysis.
-
----
-
-## Citation
-
-If you use this code, please cite:
-
-> Lyons-Galante, I., Sweetland, C., & Karimzadeh, M. (2025).
-> *Mini-Grid Nightlights: Detectability of Rural Electrification in Sub-Saharan Africa.*
-> Code repository: [https://github.com/geohai/mini-grid-nightlights](https://github.com/geohai/mini-grid-nightlights)
-
----
-
-## Contact
-
-For questions or collaboration inquiries:
-**Isaiah Lyons-Galante** (lead author)
-Issues and pull requests are welcome.
-
-```
