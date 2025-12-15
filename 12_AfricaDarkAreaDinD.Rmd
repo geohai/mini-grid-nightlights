@@ -1,8 +1,77 @@
-# Callaway & Sant'Anna Difference in Difference Analysis for a Staggered Treatment
+---
+title: Callaway & Sant'Anna Difference in Difference Analysis for a Staggered Treatment 
+author: Isaiah Lyons-Galante
+---
+<style>
+/* Force full-page dark background */
+html, body {
+  background-color: #121212 !important;
+  color: #ffffff !important;  /* white */
+}
 
-This notebook uses the Callaway & Sant'Anna (2020) Difference in Difference analysis for a staggered treatment. 
+/* Headings */
+h1, h2 {
+  color: #b197fc !important;  /* brighter purple */
+}
+
+h3, h4, h5, h6 {
+  color: #ffffff !important;  /* brighter purple */
+}
+
+/* Code blocks */
+pre, code {
+  background-color: #2e2e2e !important;
+  color: #ffffff !important;
+}
+
+/* Inline code */
+code {
+  padding: 0.15em 0.3em;
+  border-radius: 4px;
+}
+
+/* Chunk output text */
+pre.r, pre.sourceCode {
+  background-color: #2e2e2e !important;
+  color: #ffffff !important;
+}
+
+/* Remove white panels */
+div, section, article {
+  background-color: transparent !important;
+}
+</style>
+
+Now that we have extract nighttime lights values from the previous notebook, we are ready for modeling.
+We will compare the mini-grid sites to the dark area sites using a Difference in Difference analysis for staggered treatment timing.
+We will use the Callaway & Sant'Anna (2020) Difference in Difference analysis for a staggered treatment. 
 The original paper can be found [here](https://www.sciencedirect.com/science/article/pii/S0304407620300253).
 An online tutorial can be found [here](https://tilburgsciencehub.com/topics/analyze/causal-inference/did/staggered-did/).
+
+![did-example](figures/dark_africa/did_nyt_agg_plt_minigrid.png)
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Data Preparation](#data-preparation)
+  - [Load Packages](#load-packages)
+  - [Read in the Dark Area Data](#read-in-the-dark-area-data-clean-re-export)
+  - [Read in the Mini-Grid Data](#read-in-the-mini-grid-data)
+  - [Merge the Dark Area and Mini-Grid Data](#merge-the-dark-area-and-mini-grid-data)
+  - [Melt the Dataset](#melt-the-dataset)
+- [Exploratory Analysis](#exploratory-analysis)
+  - [Visualize Raw Data](#visualize-raw-data)
+  - [Look at Variances](#look-at-variances)
+  - [Outliers](#outliers)
+- [Difference in Difference Analysis](#difference-in-difference-analysis)
+  - [Data Requirements](#data-requirements)
+  - [Create a Treatment Group Variable](#create-a-treatment-group-variable)
+  - [Run the Analysis](#run-the-analysis)
+  - [Aggregated Results](#compile-a-table-of-the-aggregated-results)
+- [Results](#results)
+- [Interpretation and Conclusions](#interpretation-and-conclusions)
+- [Further Reading](#further-reading)
+
 
 ## Load Packages
 ```{r}
@@ -11,13 +80,6 @@ library(did)
 library(lubridate)
 library(sf)
 ```
-
-## Notes
-compare rural points by map class  
-compare to built points  
-compare to ocean juungle and desert points  
-comapre to mini-grids  
-compare to control sites  
 
 
 ## Read in the Dark Area Data, Clean, Re-export
@@ -33,7 +95,7 @@ africa_dark_sf <- africa_dark_sf %>%
     mutate(date_commissioned = as.Date("2013-12-01"))
 
 # glimpse
-glimpse(africa_dark_sf)
+# glimpse(africa_dark_sf)
 
 # visualize the sf with ggplot geom_sf with different colors for type
 ggplot(africa_dark_sf) +
@@ -42,19 +104,19 @@ ggplot(africa_dark_sf) +
     theme_bw()
 
 # export sf
-saveRDS(africa_dark_sf, "./data/dark_africa/africa_dark_sf.rds")
+saveRDS(africa_dark_sf, "data/dark_africa/africa_dark_sf.rds")
 ```
 
 ## Read in the Mini-Grid Data
 ```{r}
 # read in data
 africa_minigrid_df <- read_csv("data/cluber/nighttime_cluber_gdf.csv")
-glimpse(africa_minigrid_df)
+# glimpse(africa_minigrid_df)
 
 # convert to sf with latitude and longitude columns into geometry
 africa_minigrid_sf <- st_as_sf(africa_minigrid_df, coords = c("longitude", "latitude"), crs = 4326)
 
-glimpse(africa_minigrid_sf)
+# glimpse(africa_minigrid_sf)
 # drop the columns country, customers, developer, site_name, source, and status
 africa_minigrid_sf <- africa_minigrid_sf %>%
     select(-country, -customers, -developer, -site_name, -source, -status)
@@ -70,18 +132,18 @@ ggplot(africa_minigrid_sf) +
     theme_bw()
 
 # export sf
-saveRDS(africa_minigrid_sf, "./data/dark_africa/africa_minigrid_sf.rds")
+saveRDS(africa_minigrid_sf, "data/dark_africa/africa_minigrid_sf.rds")
 ```
 
 ## Merge the Dark Area and Mini-Grid Data
 ```{r}
 # read in the 2 sfs
-africa_dark_sf <- readRDS("./data/dark_africa/africa_dark_sf.rds")
-africa_minigrid_sf <- readRDS("./data/dark_africa/africa_minigrid_sf.rds")
-glimpse(africa_minigrid_sf)
+africa_dark_sf <- readRDS("data/dark_africa/africa_dark_sf.rds")
+africa_minigrid_sf <- readRDS("data/dark_africa/africa_minigrid_sf.rds")
+# glimpse(africa_minigrid_sf)
 # merge the dfs
 africa_sf <- bind_rows(africa_minigrid_sf, africa_dark_sf)
-glimpse(africa_sf)
+# glimpse(africa_sf)
 rm(africa_minigrid_sf, africa_dark_sf)
 
 # rename Map to landcover
@@ -100,7 +162,7 @@ africa_sf <- africa_sf %>%
 africa_sf <- africa_sf %>%
     mutate(id = as.factor(as.integer(row_number())))
 
-glimpse(africa_sf)
+# glimpse(africa_sf)
 
 # visualize the sf with ggplot geom_sf with different colors for type
 ggplot(africa_sf) +
@@ -108,13 +170,13 @@ ggplot(africa_sf) +
     labs(title = "Dark Area and Mini-Grid Points", x = "Longitude", y = "Latitude") +
     theme_bw()
 # export combined sf
-saveRDS(africa_sf, "./data/dark_africa/africa_sf.rds")
+saveRDS(africa_sf, "data/dark_africa/africa_sf.rds")
 ```
 
 ## Melt the Dataset
 ```{r}
 # read in the sf
-africa_sf <- readRDS("./data/dark_africa/africa_sf.rds")
+africa_sf <- readRDS("data/dark_africa/africa_sf.rds")
 
 # convert to df without geometry
 africa_df <- st_drop_geometry(africa_sf)
@@ -132,19 +194,19 @@ africa_df_melt <- africa_df_melt %>%
 africa_df_melt$image_date <- as.Date(africa_df_melt$image_date)
 
 # glimpse
-glimpse(africa_df_melt)
+# glimpse(africa_df_melt)
 
 # export df to csv
-write_csv(africa_df_melt, "./data/dark_africa/africa_df_melt.csv")
+write_csv(africa_df_melt, "data/dark_africa/africa_df_melt.csv")
 # export sf to rds
-saveRDS(africa_df_melt, "./data/dark_africa/africa_df_melt.rds")
+saveRDS(africa_df_melt, "data/dark_africa/africa_df_melt.rds")
 ```
 
 ## Visualize Raw Data
 ```{r}
 # read in data
-africa_df_melt <- readRDS("./data/dark_africa/africa_df_melt.rds")
-glimpse(africa_df_melt)
+africa_df_melt <- readRDS("data/dark_africa/africa_df_melt.rds")
+# glimpse(africa_df_melt)
 
 # # exclude type "built"
 africa_df_melt <- africa_df_melt %>%
@@ -156,7 +218,7 @@ africa_df_melt <- africa_df_melt %>%
 
 # plot a histogram of image values with log(x) and log(y) scale
 # color by log(x) in a linear scale
-df %>%
+africa_df_melt %>%
     ggplot(aes(x = image_value)) +
     geom_histogram(bins = 100) +
     scale_x_log10() +
@@ -165,7 +227,7 @@ df %>%
     theme_bw()
 
 # create a line plot of image values over time colored by id
-df %>%
+africa_df_melt %>%
     ggplot(aes(x = image_date, y = image_value, color = id)) +
     geom_line() +
     labs(title = "Image Values Over Time", x = "Image Date", y = "Image Value") +
@@ -185,7 +247,7 @@ africa_df_melt %>%
 ## Look at Variances
 ```{r}
 # read in data
-africa_df_melt <- readRDS("./data/dark_africa/africa_df_melt.rds")
+africa_df_melt <- readRDS("data/dark_africa/africa_df_melt.rds")
 africa_df <- africa_df_melt
 
 # calculate the standard deviation of all data points
@@ -241,8 +303,8 @@ Takeaways:
 ## Import Data & Calculate Medians & IQRs by ID
 ```{r}
 # read in data
-africa_df_melt <- readRDS("./data/dark_africa/africa_df_melt.rds")
-glimpse(africa_df_melt)
+africa_df_melt <- readRDS("data/dark_africa/africa_df_melt.rds")
+# glimpse(africa_df_melt)
 df <- africa_df_melt
 
 # find the median for each id, put it into a new column
@@ -258,7 +320,7 @@ df$top_whisker <- df$q3 + 1.5 * df$IQR
 # calculate the bottom whisker for each id, put it into a new column
 df$bottom_whisker <- df$q1 - 1.5 * df$IQR
 
-glimpse(df)
+# glimpse(df)
 
 # convert any image_value that is above the top whisker to the top whisker
 df <- df %>%
@@ -272,14 +334,14 @@ df <- df %>%
     select(-median, -q1, -q3, -IQR, -top_whisker, -bottom_whisker)
 
 # export 
-saveRDS(df, "./data/dark_africa/africa_df_melt_clean.rds")
+saveRDS(df, "data/dark_africa/africa_df_melt_clean.rds")
 ```
 
 
 ## Re-visualize Data After Cleaning Outliers
 ```{r}
 # read in data
-africa_df_melt_clean <- readRDS("./data/dark_africa/africa_df_melt_clean.rds")
+africa_df_melt_clean <- readRDS("data/dark_africa/africa_df_melt_clean.rds")
 df <- africa_df_melt_clean
 
 # plot a histogram of image values with log(x) and log(y) scale
@@ -327,10 +389,10 @@ Note: this analysis can be run without control sites! Worth re-running on the CL
 ## Create a Treatment Group Variable
 ```{r}
 # read in data
-africa_df_melt_clean <- readRDS("./data/dark_africa/africa_df_melt_clean.rds")
+africa_df_melt_clean <- readRDS("data/dark_africa/africa_df_melt_clean.rds")
 df <- africa_df_melt_clean
 
-glimpse(df)
+# glimpse(df)
 
 # pull out the earliest date
 start_date <- min(df$image_date)
@@ -365,13 +427,13 @@ ggplot(df, aes(x = group)) +
 
 # export df to csv
 # View(df)
-saveRDS(df, "./data/dark_africa/africa_df_melt_clean_for_csdind.rds")
+saveRDS(df, "data/dark_africa/africa_df_melt_clean_for_csdind.rds")
 ```
 
 ## Run the Analysis
 ```{r}
 # read in the data
-africa_df_melt_clean_for_csdind <- readRDS("./data/dark_africa/africa_df_melt_clean_for_csdind.rds")
+africa_df_melt_clean_for_csdind <- readRDS("data/dark_africa/africa_df_melt_clean_for_csdind.rds")
 df <- africa_df_melt_clean_for_csdind
 
 # keep only types minigrid and control group, whichever that is
@@ -393,7 +455,7 @@ did_control <- att_gt(
 )
 
 # export the model results
-saveRDS(did_control, "./data/dark_africa/did_control_minigrid_rural_lag72.rds")
+saveRDS(did_control, "data/dark_africa/did_control_minigrid_rural_lag72.rds")
 
 # aggregate the results
 did_control_agg <- aggte(
@@ -403,10 +465,10 @@ did_control_agg <- aggte(
 )
 
 # export the results
-saveRDS(did_control_agg, "./data/dark_africa/did_control_agg_minigrid_rural_lag72.rds")
+saveRDS(did_control_agg, "data/dark_africa/did_control_agg_minigrid_rural_lag72.rds")
 
 # read in the did model results
-did_control_agg <- readRDS("./data/dark_africa/did_control_agg_minigrid_rural_lag72.rds")
+did_control_agg <- readRDS("data/dark_africa/did_control_agg_minigrid_rural_lag72.rds")
 
 # view the results
 summary(did_control_agg)
@@ -425,12 +487,12 @@ print(did_control_agg_plt)
 ## Compile a Table of the Aggregated Results
 ```{r}
 # read in the data
-did_control_agg_minigrid_ocean <- readRDS("./data/dark_africa/did_control_agg_minigrid_ocean.rds")
-did_control_agg_minigrid_desert <- readRDS("./data/dark_africa/did_control_agg_minigrid_desert.rds")
-did_control_agg_minigrid_jungle <- readRDS("./data/dark_africa/did_control_agg_minigrid_jungle.rds")
-did_control_agg_minigrid_rural <- readRDS("./data/dark_africa/did_control_agg_minigrid_rural.rds")
-did_control_agg_minigrid_built <- readRDS("./data/dark_africa/did_control_agg_minigrid_built.rds")
-did_nyt_agg_minigrid <- readRDS("./data/dark_africa/did_nyt_agg_minigrid.rds")
+did_control_agg_minigrid_ocean <- readRDS("data/dark_africa/did_control_agg_minigrid_ocean.rds")
+did_control_agg_minigrid_desert <- readRDS("data/dark_africa/did_control_agg_minigrid_desert.rds")
+did_control_agg_minigrid_jungle <- readRDS("data/dark_africa/did_control_agg_minigrid_jungle.rds")
+did_control_agg_minigrid_rural <- readRDS("data/dark_africa/did_control_agg_minigrid_rural.rds")
+did_control_agg_minigrid_built <- readRDS("data/dark_africa/did_control_agg_minigrid_built.rds")
+did_nyt_agg_minigrid <- readRDS("data/dark_africa/did_nyt_agg_minigrid.rds")
 
 # print out summaries of each
 summary(did_control_agg_minigrid_ocean)
@@ -499,26 +561,23 @@ ggsave("figures/dark_africa/did_control_agg_plt_minigrid_built.png", did_control
 ```
 
 ## Results
-### Mini-Grid vs Ocean
-     ATT    Std. Error     [ 95%  Conf. Int.] 
- -0.0129        0.0175    -0.0473      0.0215 
+| Comparison                     | ATT     | Std. Error | 95% CI (Lower) | 95% CI (Upper) | Sig. |
+|--------------------------------|---------|------------|---------------|---------------|------|
+| Mini-Grid vs Ocean             | -0.0129 | 0.0175     | -0.0473       | 0.0215        |      |
+| Mini-Grid vs Desert            |  0.0340 | 0.0188     | -0.0029       | 0.0710        |      |
+| Mini-Grid vs Jungle            |  0.0232 | 0.0180     | -0.0120       | 0.0584        |      |
+| Mini-Grid vs Rural             |  0.0421 | 0.0263     | -0.0095       | 0.0937        |      |
+| Mini-Grid vs Built             | -0.8998 | 0.1225     | -1.1400       | -0.6596       | *    |
+| Mini-Grid vs Not Yet Treated   | -0.0573 | 0.0741     | -0.2026       | 0.0880        |      |
 
-### Mini-Grid vs Desert
-   ATT    Std. Error     [ 95%  Conf. Int.] 
- 0.034        0.0188    -0.0029       0.071 
 
-### Mini-Grid vs Jungle
-    ATT    Std. Error     [ 95%  Conf. Int.] 
- 0.0232         0.018     -0.012      0.0584 
+## Interpretation and Conclusions
+In this notebook, we have conducted a Difference in Difference analysis using the Callaway & Sant'Anna (2020) method for staggered treatment timing.
+We compared the nighttime lights values of mini-grid sites to various control site types, including ocean, desert, jungle, rural, and built areas.
+The results indicate that mini-grid sites show a statistically significant decrease in brightness compared to built areas, while comparisons with ocean, desert, jungle, and rural areas did not yield statistically significant differences.
+This suggests that mini-grid installations may not lead to substantial increases in nighttime brightness when compared to less developed areas, but they do show a significant difference when compared to already developed built areas.
+Further research could explore the underlying factors contributing to these differences and assess the broader impacts of mini-grid installations on local communities and environments.
 
-### Mini-Grid vs Rural
-    ATT    Std. Error     [ 95%  Conf. Int.] 
- 0.0421        0.0263    -0.0095      0.0937 
-
-### Mini-Grid vs Built
-    ATT    Std. Error     [ 95%  Conf. Int.]  
- -0.8998        0.1225      -1.14     -0.6596 *
-
-### Mini-Grid vs Not Yet Treated
-    ATT    Std. Error     [ 95%  Conf. Int.]
--0.0573        0.0741    -0.2026       0.088 
+## Further Reading
+This analysis was the foundation of my Master's thesis, which is currently under review for publication.
+The full thesis can be found [here](https://www.proquest.com/openview/93004cb28d4b39c798e019368d046f1d/1?pq-origsite=gscholar&cbl=18750&diss=y).
